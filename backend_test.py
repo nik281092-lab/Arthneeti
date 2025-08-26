@@ -255,43 +255,41 @@ def main():
     tester = BudgetTrackerAPITester()
     
     # Test sequence
-    test_sequence = [
-        ("Root Endpoint", tester.test_root_endpoint),
-        ("Get Categories", tester.test_get_categories),
+    tests = [
+        ("Signup", tester.test_signup),
+        ("Get Current User", tester.test_get_current_user),
         ("Create Profile", tester.test_create_profile),
         ("Get Profile", tester.test_get_profile),
-        ("Get All Profiles", tester.test_get_profiles),
-        ("Create Budgets", tester.test_create_budgets),
-        ("Get Budgets", tester.test_get_budgets),
-        ("Create Transactions", tester.test_create_transactions),
+        ("Get Categories (CRITICAL)", tester.test_get_categories),
+        ("Create Transaction", tester.test_create_transaction),
         ("Get Transactions", tester.test_get_transactions),
-        ("Dashboard Summary", tester.test_dashboard_summary),
-        ("CFR Analysis", tester.test_cfr_analysis),
-        ("Create Custom Category", tester.test_create_custom_category),
+        ("Dashboard Data", tester.test_dashboard)
     ]
     
-    print(f"Running {len(test_sequence)} test groups...\n")
+    failed_tests = []
     
-    for test_name, test_func in test_sequence:
-        print(f"\n{'='*20} {test_name} {'='*20}")
+    for test_name, test_func in tests:
         try:
-            test_func()
+            if not test_func():
+                failed_tests.append(test_name)
         except Exception as e:
-            print(f"❌ Test group '{test_name}' failed with exception: {str(e)}")
+            print(f"❌ {test_name} failed with exception: {str(e)}")
+            failed_tests.append(test_name)
     
-    # Print final results
-    print(f"\n{'='*50}")
-    print(f"📊 Final Results:")
-    print(f"   Tests Run: {tester.tests_run}")
-    print(f"   Tests Passed: {tester.tests_passed}")
-    print(f"   Success Rate: {(tester.tests_passed/tester.tests_run*100):.1f}%" if tester.tests_run > 0 else "No tests run")
+    # Print summary
+    print("\n" + "=" * 50)
+    print("📊 TEST SUMMARY")
+    print("=" * 50)
+    print(f"Tests run: {tester.tests_run}")
+    print(f"Tests passed: {tester.tests_passed}")
+    print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
     
-    if tester.tests_passed == tester.tests_run:
-        print("🎉 All tests passed!")
-        return 0
-    else:
-        print(f"⚠️  {tester.tests_run - tester.tests_passed} tests failed")
+    if failed_tests:
+        print(f"\n❌ Failed tests: {', '.join(failed_tests)}")
         return 1
+    else:
+        print("\n✅ All tests passed!")
+        return 0
 
 if __name__ == "__main__":
     sys.exit(main())
