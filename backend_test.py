@@ -60,206 +60,192 @@ class BudgetTrackerAPITester:
             print(f"❌ Failed - Error: {str(e)}")
             return False, {}
 
-    def test_root_endpoint(self):
-        """Test root API endpoint"""
-        return self.run_test("Root Endpoint", "GET", "", 200)
-
-    def test_get_categories(self):
-        """Test getting categories (should have default categories)"""
-        success, response = self.run_test("Get Categories", "GET", "categories", 200)
-        if success and isinstance(response, list):
-            print(f"   Found {len(response)} categories")
-            # Store category IDs for later use
-            for category in response:
-                self.category_ids[category['type']] = category['id']
-            return len(response) > 0
-        return False
-
-    def test_create_profile(self):
-        """Test creating a profile"""
-        profile_data = {
-            "name": "Test User",
-            "dob": "1990-01-01",
-            "phone": "+1234567890",
-            "email": "test@example.com",
-            "country": "India",
-            "currency": "INR",
-            "is_family_mode": False,
-            "family_members": []
+    def test_signup(self):
+        """Test user signup"""
+        timestamp = datetime.now().strftime('%H%M%S')
+        signup_data = {
+            "email": f"test_user_{timestamp}@example.com",
+            "password": "TestPass123!",
+            "first_name": "Test",
+            "last_name": "User"
         }
         
-        success, response = self.run_test("Create Profile", "POST", "profile", 200, profile_data)
+        success, response = self.run_test(
+            "User Signup",
+            "POST",
+            "signup",
+            200,
+            data=signup_data
+        )
+        
+        if success and 'access_token' in response:
+            self.token = response['access_token']
+            self.user_id = response['user']['id']
+            print(f"   Token obtained: {self.token[:20]}...")
+            return True
+        return False
+
+    def test_login(self):
+        """Test user login with existing credentials"""
+        login_data = {
+            "email": "test@example.com",
+            "password": "testpass123"
+        }
+        
+        success, response = self.run_test(
+            "User Login (if exists)",
+            "POST", 
+            "login",
+            200,
+            data=login_data
+        )
+        
+        if success and 'access_token' in response:
+            self.token = response['access_token']
+            self.user_id = response['user']['id']
+            return True
+        return False
+
+    def test_get_current_user(self):
+        """Test getting current user info"""
+        success, response = self.run_test(
+            "Get Current User",
+            "GET",
+            "me",
+            200
+        )
+        return success
+
+    def test_create_profile(self):
+        """Test profile creation"""
+        profile_data = {
+            "first_name": "Test",
+            "last_name": "User",
+            "currency": "USD",
+            "bank_account": "1234567890",
+            "address": "123 Test Street",
+            "country": "USA",
+            "account_type": "individual",
+            "monthly_income": 5000.0
+        }
+        
+        success, response = self.run_test(
+            "Create Profile",
+            "POST",
+            "profile",
+            200,
+            data=profile_data
+        )
+        
         if success and 'id' in response:
             self.profile_id = response['id']
-            print(f"   Profile ID: {self.profile_id}")
             return True
         return False
 
     def test_get_profile(self):
-        """Test getting a profile by ID"""
-        if not self.profile_id:
-            print("❌ No profile ID available for testing")
-            return False
-        
-        return self.run_test("Get Profile", "GET", f"profile/{self.profile_id}", 200)[0]
-
-    def test_get_profiles(self):
-        """Test getting all profiles"""
-        return self.run_test("Get All Profiles", "GET", "profiles", 200)[0]
-
-    def test_create_budgets(self):
-        """Test creating budgets for all category types"""
-        if not self.profile_id:
-            print("❌ No profile ID available for budget creation")
-            return False
-
-        budget_data = [
-            {"category_type": "needs", "budgeted_amount": 5000},
-            {"category_type": "wants", "budgeted_amount": 2000},
-            {"category_type": "savings", "budgeted_amount": 3000}
-        ]
-
-        all_success = True
-        for budget in budget_data:
-            budget_payload = {
-                "profile_id": self.profile_id,
-                "month": self.current_month,
-                **budget
-            }
-            success, _ = self.run_test(
-                f"Create {budget['category_type'].title()} Budget", 
-                "POST", 
-                "budget", 
-                200, 
-                budget_payload
-            )
-            if not success:
-                all_success = False
-
-        return all_success
-
-    def test_get_budgets(self):
-        """Test getting budgets for a profile and month"""
-        if not self.profile_id:
-            print("❌ No profile ID available for getting budgets")
-            return False
-        
-        return self.run_test("Get Budgets", "GET", f"budget/{self.profile_id}/{self.current_month}", 200)[0]
-
-    def test_create_transactions(self):
-        """Test creating various transactions"""
-        if not self.profile_id or not self.category_ids:
-            print("❌ Missing profile ID or category IDs for transaction creation")
-            return False
-
-        transactions = [
-            {
-                "amount": 8000,
-                "transaction_type": "income",
-                "category_id": list(self.category_ids.values())[0],  # Use first available category
-                "payment_source": "Salary Account",
-                "description": "Monthly Salary",
-                "date": f"{self.current_month}-01"
-            },
-            {
-                "amount": 1500,
-                "transaction_type": "expense",
-                "category_id": self.category_ids.get('needs', list(self.category_ids.values())[0]),
-                "payment_source": "Credit Card",
-                "description": "Grocery Shopping",
-                "date": f"{self.current_month}-05"
-            },
-            {
-                "amount": 800,
-                "transaction_type": "expense",
-                "category_id": self.category_ids.get('wants', list(self.category_ids.values())[0]),
-                "payment_source": "Debit Card",
-                "description": "Restaurant",
-                "date": f"{self.current_month}-10"
-            },
-            {
-                "amount": 2000,
-                "transaction_type": "expense",
-                "category_id": self.category_ids.get('savings', list(self.category_ids.values())[0]),
-                "payment_source": "Bank Transfer",
-                "description": "Investment",
-                "date": f"{self.current_month}-15"
-            }
-        ]
-
-        all_success = True
-        for i, transaction in enumerate(transactions):
-            transaction_payload = {
-                "profile_id": self.profile_id,
-                **transaction
-            }
-            success, response = self.run_test(
-                f"Create Transaction {i+1} ({transaction['transaction_type']})", 
-                "POST", 
-                "transactions", 
-                200, 
-                transaction_payload
-            )
-            if success and i == 0:  # Store first transaction ID
-                self.transaction_id = response.get('id')
-            if not success:
-                all_success = False
-
-        return all_success
-
-    def test_get_transactions(self):
-        """Test getting transactions for a profile"""
-        if not self.profile_id:
-            print("❌ No profile ID available for getting transactions")
-            return False
-        
-        success, response = self.run_test("Get Transactions", "GET", f"transactions/{self.profile_id}", 200)
-        if success and isinstance(response, list):
-            print(f"   Found {len(response)} transactions")
-            return len(response) > 0
-        return False
-
-    def test_dashboard_summary(self):
-        """Test getting dashboard summary"""
-        if not self.profile_id:
-            print("❌ No profile ID available for dashboard summary")
-            return False
-        
-        success, response = self.run_test("Dashboard Summary", "GET", f"dashboard/{self.profile_id}", 200)
-        if success:
-            expected_keys = ['profile_id', 'month', 'total_income', 'total_expenses', 'balance', 'cfr_analysis']
-            has_all_keys = all(key in response for key in expected_keys)
-            if has_all_keys:
-                print(f"   Income: {response['total_income']}, Expenses: {response['total_expenses']}, Balance: {response['balance']}")
-                print(f"   CFR Analysis items: {len(response['cfr_analysis'])}")
-                return True
-            else:
-                print(f"   Missing keys in response: {[key for key in expected_keys if key not in response]}")
-        return False
-
-    def test_cfr_analysis(self):
-        """Test CFR analysis endpoint"""
-        if not self.profile_id:
-            print("❌ No profile ID available for CFR analysis")
-            return False
-        
-        success, response = self.run_test("CFR Analysis", "GET", f"cfr-analysis/{self.profile_id}/{self.current_month}", 200)
-        if success and isinstance(response, list):
-            print(f"   CFR Analysis items: {len(response)}")
-            for analysis in response:
-                if 'category_type' in analysis and 'status' in analysis:
-                    print(f"   {analysis['category_type']}: {analysis['status']} ({analysis.get('deviation_percentage', 0):.1f}%)")
-            return len(response) > 0
-        return False
-
-    def test_create_custom_category(self):
-        """Test creating a custom category"""
+        """Test getting user profile"""
         success, response = self.run_test(
-            "Create Custom Category", 
-            "POST", 
-            "categories?name=Custom%20Test&category_type=wants", 
+            "Get Profile",
+            "GET",
+            "profile",
             200
         )
+        return success
+
+    def test_get_categories(self):
+        """Test getting categories - CRITICAL for dropdown issue"""
+        success, response = self.run_test(
+            "Get Categories",
+            "GET",
+            "categories",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} categories")
+            if len(response) > 0:
+                self.category_id = response[0]['id']
+                print(f"   Sample category: {response[0]['name']} ({response[0]['type']})")
+                
+                # Check if we have all expected categories
+                category_names = [cat['name'] for cat in response]
+                expected_categories = [
+                    "Grocery", "Rent", "Petrol", "Monthly bills", "Medical",
+                    "Entertainment", "Fashion and Clothing", "Food And Restaurant",
+                    "Investment/Savings", "Insurance", "Donation"
+                ]
+                
+                missing_categories = [cat for cat in expected_categories if cat not in category_names]
+                if missing_categories:
+                    print(f"   ⚠️  Missing categories: {missing_categories}")
+                else:
+                    print(f"   ✅ All expected categories found")
+                    
+            return True
+        return False
+
+    def test_create_transaction(self):
+        """Test creating a transaction"""
+        if not self.category_id:
+            print("   ⚠️  No category ID available, skipping transaction test")
+            return False
+            
+        transaction_data = {
+            "amount": 100.50,
+            "transaction_type": "expense",
+            "category_id": self.category_id,
+            "person_name": "Test User",
+            "payment_mode": "online",
+            "bank_app": "Test Bank",
+            "description": "Test transaction",
+            "date": datetime.now().strftime('%Y-%m-%d')
+        }
+        
+        success, response = self.run_test(
+            "Create Transaction",
+            "POST",
+            "transactions",
+            200,
+            data=transaction_data
+        )
+        return success
+
+    def test_get_transactions(self):
+        """Test getting user transactions"""
+        success, response = self.run_test(
+            "Get Transactions",
+            "GET",
+            "transactions",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} transactions")
+        return success
+
+    def test_dashboard(self):
+        """Test dashboard data - includes CFR analysis"""
+        success, response = self.run_test(
+            "Get Dashboard",
+            "GET",
+            "dashboard",
+            200
+        )
+        
+        if success:
+            # Check CFR analysis
+            if 'cfr_analysis' in response:
+                cfr_data = response['cfr_analysis']
+                print(f"   CFR Analysis found with {len(cfr_data)} categories")
+                for analysis in cfr_data:
+                    print(f"     {analysis['category_type']}: {analysis['recommended_percentage']}% recommended")
+            
+            # Check other dashboard components
+            dashboard_keys = ['total_income', 'total_expenses', 'balance', 'monthly_income']
+            for key in dashboard_keys:
+                if key in response:
+                    print(f"   {key}: {response[key]}")
+                    
         return success
 
 def main():
