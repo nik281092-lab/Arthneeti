@@ -13,10 +13,16 @@ class BudgetTrackerAPITester:
         self.tests_run = 0
         self.tests_passed = 0
 
-    def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
+    def run_test(self, name, method, endpoint, expected_status, data=None, headers=None):
         """Run a single API test"""
-        url = f"{self.base_url}/{endpoint}" if endpoint else self.base_url
-        headers = {'Content-Type': 'application/json'}
+        url = f"{self.base_url}/{endpoint}"
+        test_headers = {'Content-Type': 'application/json'}
+        
+        if self.token:
+            test_headers['Authorization'] = f'Bearer {self.token}'
+        
+        if headers:
+            test_headers.update(headers)
 
         self.tests_run += 1
         print(f"\n🔍 Testing {name}...")
@@ -24,13 +30,11 @@ class BudgetTrackerAPITester:
         
         try:
             if method == 'GET':
-                response = requests.get(url, headers=headers, params=params)
+                response = requests.get(url, headers=test_headers)
             elif method == 'POST':
-                response = requests.post(url, json=data, headers=headers)
+                response = requests.post(url, json=data, headers=test_headers)
             elif method == 'PUT':
-                response = requests.put(url, json=data, headers=headers)
-            elif method == 'DELETE':
-                response = requests.delete(url, headers=headers)
+                response = requests.put(url, json=data, headers=test_headers)
 
             success = response.status_code == expected_status
             if success:
@@ -40,10 +44,6 @@ class BudgetTrackerAPITester:
                     response_data = response.json()
                     if isinstance(response_data, dict) and len(str(response_data)) < 500:
                         print(f"   Response: {response_data}")
-                    elif isinstance(response_data, list) and len(response_data) > 0:
-                        print(f"   Response: List with {len(response_data)} items")
-                        if len(response_data) <= 3:
-                            print(f"   First item: {response_data[0]}")
                     return True, response_data
                 except:
                     return True, {}
