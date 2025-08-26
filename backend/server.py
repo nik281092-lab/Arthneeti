@@ -279,7 +279,7 @@ async def get_cfr_analysis(profile_id: str, month: str):
                 status = "undershoot"
         elif category_type == CategoryType.WANTS:
             # Wants: +2% allowed, unlimited undershoot
-            tolerance_range = {"min": float('-inf'), "max": 2}
+            tolerance_range = {"min": -999999, "max": 2}
             if deviation_percentage > 2:
                 status = "overshoot"
             else:
