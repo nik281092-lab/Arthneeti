@@ -1,18 +1,17 @@
 import requests
 import sys
 import json
-from datetime import datetime, timezone
-import uuid
+from datetime import datetime
 
 class BudgetTrackerAPITester:
     def __init__(self, base_url="https://moneymanager-23.preview.emergentagent.com/api"):
         self.base_url = base_url
+        self.token = None
+        self.user_id = None
+        self.profile_id = None
+        self.category_id = None
         self.tests_run = 0
         self.tests_passed = 0
-        self.profile_id = None
-        self.category_ids = {}
-        self.transaction_id = None
-        self.current_month = datetime.now().strftime("%Y-%m")
 
     def run_test(self, name, method, endpoint, expected_status, data=None, params=None):
         """Run a single API test"""
