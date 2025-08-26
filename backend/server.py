@@ -465,12 +465,12 @@ async def get_dashboard_summary(current_user: User = Depends(get_current_user), 
         ))
     
     return {
-        "profile": profile,
+        "profile": Profile(**profile).dict(),
         "month": month,
         "total_income": total_income,
         "total_expenses": total_expenses,
         "balance": total_income - total_expenses,
-        "cfr_analysis": cfr_analysis,
+        "cfr_analysis": [analysis.dict() for analysis in cfr_analysis],
         "category_wise_spending": category_wise_spending,
         "monthly_income": monthly_income
     }
