@@ -463,7 +463,7 @@ const ProfilePage = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Existing Family Members */}
+                {/* Current Family Members */}
                 {familyMembers.length > 0 && (
                   <div>
                     <h4 className="text-white font-semibold mb-4">Current Family Members</h4>
@@ -480,18 +480,46 @@ const ProfilePage = () => {
                                 <Mail className="w-3 h-3" />
                                 <span>{member.email}</span>
                               </div>
+                              {!member.is_master && (
+                                <div className="text-green-400 text-xs mt-1">
+                                  ✅ Account Created • Login: {member.email} | Password: Artheeti1
+                                </div>
+                              )}
                             </div>
-                            <Badge className={getRelationBadgeColor(member.relation)}>
-                              {member.relation}
-                            </Badge>
-                            {member.is_master && (
-                              <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                                Master
+                            <div className="flex items-center space-x-2">
+                              <Badge className={getRelationBadgeColor(member.relation)}>
+                                {member.relation}
                               </Badge>
-                            )}
+                              {member.is_master && (
+                                <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                                  Master
+                                </Badge>
+                              )}
+                            </div>
                           </div>
+                          {!member.is_master && (
+                            <Button
+                              type="button"
+                              onClick={() => handleRemoveFamilyMember(member.id, member.name)}
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-400 hover:bg-red-900/20 hover:text-red-300"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       ))}
+                    </div>
+                    
+                    <div className="mt-4 p-4 bg-green-950/30 border border-green-700 rounded-lg">
+                      <h5 className="text-green-300 font-medium mb-2">Family Account Instructions:</h5>
+                      <ul className="text-green-200 text-sm space-y-1">
+                        <li>• Family members can login using their email and default password "Artheeti1"</li>
+                        <li>• They must change their password on first login</li>
+                        <li>• All family members share the same transactions and budget data</li>
+                        <li>• Family members can view and edit all family transactions</li>
+                      </ul>
                     </div>
                   </div>
                 )}
