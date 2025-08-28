@@ -107,52 +107,64 @@ Convert "Edit Profile" from a modal/dropdown option to a full, scrollable page. 
 
 ## backend:
   - task: "Extend User and Profile models for family member support"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: false
         - agent: "main"
         - comment: "Need to add family member fields to user model and create family member endpoints"
+        - working: true
+        - agent: "main"
+        - comment: "Added is_family_member, master_user_id, family_relation, must_change_password fields to User model. Updated FamilyMember model with user_id reference."
 
   - task: "Create family member management endpoints"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: false
         - agent: "main"
         - comment: "Need endpoints for adding, listing, and managing family members"
+        - working: true
+        - agent: "main"
+        - comment: "Added POST /api/family-members, GET /api/family-members, GET /api/profile/family-status endpoints. Added helper functions get_master_profile and get_all_family_members."
 
   - task: "Implement first-time login flow for family members"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: false
         - agent: "main"
         - comment: "Need to handle password change flow and profile completion for new family members"
+        - working: true
+        - agent: "main"
+        - comment: "Enhanced login endpoint to return must_change_password flag. Updated change-password endpoint to clear the flag. Family members created with default password 'Artheeti1' and must_change_password=true."
 
   - task: "Update transaction endpoints for shared family access"
-    implemented: false
-    working: false
+    implemented: true
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: false
         - agent: "main"
         - comment: "Need to allow all family members to view and edit shared transactions"
+        - working: true
+        - agent: "main"
+        - comment: "Updated all transaction endpoints to use get_master_profile for shared family access. Updated dashboard, filtered transactions, available filters, CRUD operations."
 
 ## frontend:
   - task: "Convert Edit Profile to dedicated page"
