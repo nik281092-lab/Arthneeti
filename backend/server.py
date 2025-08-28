@@ -27,6 +27,7 @@ db = client[os.environ['DB_NAME']]
 SECRET_KEY = secrets.token_urlsafe(32)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 * 24 * 60  # 30 days
+DEFAULT_FAMILY_PASSWORD = "Artheeti1"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
