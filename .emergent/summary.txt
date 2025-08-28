@@ -1,0 +1,113 @@
+<analysis>
+This trajectory details the development of a Budget Tracking application by a previous AI engineer. Initially, the AI built a functional MVP, including a landing page with glass morphism and gradients, a dashboard with Clever Finance Rule (CFR) analysis, a profile setup, category management, and transaction entry. The tech stack is React for frontend, FastAPI for backend, and MongoDB for the database, running in a Kubernetes environment.
+
+Throughout the development, the user provided continuous feedback, leading to several iterations of bug fixes and feature enhancements. Key issues resolved include: MongoDB ObjectId serialization errors in transaction filters, missing Save Profile and Add Entry buttons, and z-index problems in modal dropdowns. The AI also implemented a full authentication system, smart filtering for transaction views, and a dynamic View All Entries tab. The most recent set of requests from the user, which are currently being addressed, involve a significant overhaul of the profile management to be a dedicated page (not a modal), and the introduction of a comprehensive family member management system with distinct login flows and shared data access. The AI attempted a bulk file write for these features but hit a size limit, indicating a shift to incremental backend implementation for the family features.
+</analysis>
+
+<product_requirements>
+The goal is a web-based Budget Tracking application with a React frontend, FastAPI backend, and MongoDB.
+
+**Core Features (Initial Request & Implemented):**
+*   **Landing Page**: Dashboard style, glass morphism, color gradients, glowing buttons.
+*   **Dashboard**: Summary of expenses/incomes, Clever Finance Rule (CFR) application with specific tolerances (Needs: ±3%, no overshoot >3%; Wants: +2% allowed, unlimited undershoot; Savings: ±3% allowed), color-coded alerts. Later updated to CFR: Needs (50%), Wants (30%), Savings (20%). Monthly, weekly, daily summary graphs, total income vs expense charts, Add Entry button.
+*   **Profile Setup**: Fields for Name, DOB (auto-age), Phone (with country code), Email, Country, Currency (default INR). Toggle for Individual/Family Mode.
+*   **Categories**: Preloaded categories (Needs: Yellow, Wants: Light Red, Savings: Green). New categories added only from Profile (mandatory classification).
+*   **Add Entry Page**: Add expense/income, choose Category (from LOV), Person (from fixed list), Payment source (bank/credit card). Other category prompts classification.
+*   **Authentication**: Login required, Sign up using Email (User ID), Login with password, Profile creation after login.
+
+**Recent Feature Enhancements & Bug Fixes (Implemented):**
+*   Static vertical gradient background (dark green bottom).
+*   Top-right options: Profile settings (now dropdown), Logout.
+*   Save Profile and Add Entry buttons.
+*   View All Entries tab with day/week/month/year filtering, edit/delete transaction functionality, income/expense color coding.
+*   Profile settings with edit profile and change password options (now dropdown menu, previously modal tabs).
+*   Smart filter dropdowns showing only existing entries.
+*   Disable View All Entries tab if no transactions.
+*   Currency symbols on dashboard for balance.
+
+**Pending/Ongoing Features (Latest Request):**
+*   **Edit Profile**: Should open as a whole new scrollable page, not a popup/modal.
+*   **Family Member Management**: If Family Mode is selected in profile, enable adding family members (Email ID, First Name). Accounts auto-created with default password Artheeti1. Family members must change password and complete profile on first login.
+*   **Family Member Data Access**: All family members (master and added members) view/edit all entries. Only the master profile can add family members. Family members cannot select Individual profile.
+*   **Person Selection in Add Entries**: All added family members visible in Person dropdown.
+</product_requirements>
+
+<key_technical_concepts>
+-   **Full-Stack Architecture**: React (Frontend), FastAPI (Backend), MongoDB (Database).
+-   **UI/UX**: Shadcn UI components, Tailwind CSS, Glass morphism, CSS gradients, Lucide React icons.
+-   **Authentication**: JWT for tokens, Bcrypt for password hashing.
+-   **Data Handling**: Pydantic models for data validation, UUIDs for MongoDB IDs,  for timezone-aware dates, ISO string conversion for MongoDB storage.
+-   **API Communication**: Axios for frontend-backend interaction.
+-   **Environment Management**:  files for , .
+-   **Deployment**: Kubernetes container environment, Supervisor for service control.
+</key_technical_concepts>
+
+<code_architecture>
+
+
+
+**Key Files and Their Importance/Changes:**
+
+-   :
+    -   **Importance**: This is the core FastAPI backend application. It defines all API endpoints for user authentication, profile management, category retrieval, transaction CRUD (create, read, update, delete), filtered transaction retrieval, and dashboard data aggregation (including CFR calculations).
+    -   **Changes Made**:
+        -   Initial implementation of authentication endpoints (, , ).
+        -   Endpoints for profile creation and updates ().
+        -   Endpoints for categories ().
+        -   Endpoints for transactions (, ).
+        -   CFR calculation logic integrated.
+        -   Bug fixes related to MongoDB ObjectId serialization and date parsing in .
+        -   Added  endpoint for smart filter dropdowns.
+        -   Includes security features like JWT token generation/validation and Bcrypt password hashing.
+        -   Updated CFR calculations to 50/30/20 rule.
+        -   Includes logic for handling  values in income for dashboard calculations.
+-   :
+    -   **Importance**: The main React component, likely handling the application's routing, global state (like user authentication context), and rendering different pages/components.
+    -   **Changes Made**:
+        -   Implemented client-side routing (e.g., React Router DOM).
+        -   Integrated authentication flow, redirecting users based on login status.
+        -   Renders the main layout, dashboard, profile setup, add entry modal, view entries tab, and settings dropdown.
+        -   Managed global state for user data, transactions, and UI elements.
+        -   Includes logic to disable View All Entries tab when no transactions exist.
+        -   Integrates Shadcn UI components for overall application structure and styling.
+-    and :
+    -   **Importance**: These files control the global and component-specific styling of the application.
+    -   **Changes Made**:
+        -   Implemented the static vertical gradient background.
+        -   Applied glass morphism effects ().
+        -   Defined modern typography and color schemes.
+        -   Fixed z-index issues, particularly for dropdowns within modals, to ensure proper interaction layering.
+        -   Styling for various Shadcn components and custom UI elements.
+-    and other Shadcn UI components:
+    -   **Importance**: Provides pre-built, styled, and accessible UI components.
+    -   **Changes Made**:
+        -   Adjustments to ensure proper portal mounting or z-index in specific use cases, especially within modals (e.g., for the category dropdown in ).
+</code_architecture>
+
+<pending_tasks>
+-   Convert Edit Profile from a modal/dropdown option to a full, scrollable page.
+-   Implement the ability to add family members when Family Mode is selected in the profile.
+-   Auto-create accounts for added family members with default credentials (Email ID as User ID, password Artheeti1).
+-   Ensure family members are selectable in the Person dropdown on the Add Entry page.
+-   Develop the first-time login flow for family members (prompt password change, redirect to edit profile).
+-   Implement shared data access: Master profile and family members can view and edit all entries.
+-   Restrict family members from changing their profile type to Individual.
+</pending_tasks>
+
+<current_work>
+The application is currently in a state where all previously reported bugs (filter errors, missing buttons, dropdown z-index) have been resolved, and a comprehensive set of features, including full authentication, profile management (for individual mode), CFR analysis, transaction CRUD with smart filtering, and a modern UI, are fully functional. The AI has just received a major new set of requirements, primarily focused on extending the user model to support a Family Mode with multi-user accounts, shared data, and a dedicated Edit Profile page.
+
+Specifically, the AI has just received the request to:
+1.  Make Edit Profile a dedicated page.
+2.  Add family member management functionality.
+3.  Auto-create family member accounts with default passwords and a first-time login flow.
+4.  Ensure family members are selectable in Add Entry.
+5.  Implement shared transaction visibility and editability among family members.
+6.  Ensure currency symbols are correctly displayed.
+
+The previous AI attempted to implement these changes in a single  call but failed due to the content being too large. It has recognized this limitation and is planning to implement these features in smaller, more manageable chunks, starting with backend modifications. The current focus is on initiating these backend changes to support the new family member model.
+</current_work>
+
+<optional_next_step>
+Implement backend changes for the Edit Profile dedicated page and the family member management system.
+</optional_next_step>
