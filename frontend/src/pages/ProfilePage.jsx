@@ -18,7 +18,6 @@ const ProfilePage = () => {
   const [familyStatus, setFamilyStatus] = useState(null);
   const [familyMembers, setFamilyMembers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [showAddFamilyMember, setShowAddFamilyMember] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
 
   // Profile form
@@ -34,13 +33,8 @@ const ProfilePage = () => {
     monthly_income: ''
   });
 
-  // Family member form
-  const [familyMemberForm, setFamilyMemberForm] = useState({
-    email: '',
-    first_name: '',
-    last_name: '',
-    relation: 'spouse'
-  });
+  // New family members to be created (not yet saved)
+  const [newFamilyMembers, setNewFamilyMembers] = useState([]);
 
   // Password change form
   const [passwordForm, setPasswordForm] = useState({
