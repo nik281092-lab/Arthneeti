@@ -379,7 +379,7 @@ def main():
     
     tester = BudgetTrackerAPITester()
     
-    # Test sequence
+    # Test sequence - Focus on reported bug fixes
     tests = [
         ("Signup", tester.test_signup),
         ("Get Current User", tester.test_get_current_user),
@@ -388,7 +388,14 @@ def main():
         ("Get Categories (CRITICAL)", tester.test_get_categories),
         ("Create Transaction", tester.test_create_transaction),
         ("Get Transactions", tester.test_get_transactions),
-        ("Dashboard Data", tester.test_dashboard)
+        ("Dashboard Data", tester.test_dashboard),
+        # CRITICAL TESTS FOR REPORTED BUGS
+        ("🔥 Filtered Transactions (Month)", tester.test_filtered_transactions_month),
+        ("🔥 Filtered Transactions (Week)", tester.test_filtered_transactions_week),
+        ("🔥 Filtered Transactions (Day)", tester.test_filtered_transactions_day),
+        ("🔥 Filtered Transactions (Different Years)", tester.test_filtered_transactions_different_years),
+        ("Profile Update", tester.test_profile_update),
+        ("Change Password", tester.test_change_password)
     ]
     
     failed_tests = []
