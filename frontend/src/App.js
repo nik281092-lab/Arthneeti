@@ -301,14 +301,18 @@ const ProfileSetupPage = () => {
 
             <div>
               <Label htmlFor="account_type" className="text-white">Account Type</Label>
-              <select 
+              <Select 
                 value={profileForm.account_type} 
-                onChange={(e) => setProfileForm(prev => ({ ...prev, account_type: e.target.value }))}
-                className="auth-input"
+                onValueChange={(value) => setProfileForm(prev => ({ ...prev, account_type: value }))}
               >
-                <option value="individual">Individual</option>
-                <option value="family">Family</option>
-              </select>
+                <SelectTrigger className="auth-input">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Individual</SelectItem>
+                  <SelectItem value="family">Family</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <Button 
