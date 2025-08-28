@@ -257,6 +257,51 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=401, detail="User not found")
     return User(**user)
 
+async def get_master_profile(user: User):
+    """Get the master profile for a user or their family"""
+    if user.is_family_member and user.master_user_id:
+        # This is a family member, get the master profile
+        master_profile = await db.profiles.find_one({"user_id": user.master_user_id})
+        return Profile(**master_profile) if master_profile else None
+    else:
+        # This is a master user, get their own profile
+        profile = await db.profiles.find_one({"user_id": user.id})
+        return Profile(**profile) if profile else None
+
+async def get_all_family_members(profile_id: str):
+    """Get all family members (including master) for a profile"""
+    profile = await db.profiles.find_one({"id": profile_id})
+    if not profile:
+        return []
+    
+    members = []
+    
+    # Add the master user
+    master_user = await db.users.find_one({"id": profile["user_id"]})
+    if master_user:
+        members.append({
+            "id": master_user["id"],
+            "name": f"{master_user['first_name']} {master_user['last_name']}",
+            "email": master_user["email"],
+            "relation": "master",
+            "is_master": True
+        })
+    
+    # Add family members who are registered
+    for family_member in profile.get("family_members", []):
+        if family_member.get("is_registered") and family_member.get("user_id"):
+            member_user = await db.users.find_one({"id": family_member["user_id"]})
+            if member_user:
+                members.append({
+                    "id": member_user["id"],
+                    "name": f"{member_user['first_name']} {member_user['last_name']}",
+                    "email": member_user["email"],
+                    "relation": family_member["relation"],
+                    "is_master": False
+                })
+    
+    return members
+
 # Initialize default categories
 DEFAULT_CATEGORIES = [
     # Needs
