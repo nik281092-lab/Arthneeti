@@ -701,12 +701,12 @@ async def get_filtered_transactions(
     day: Optional[int] = None,
     current_user: User = Depends(get_current_user)
 ):
-    profile = await db.profiles.find_one({"user_id": current_user.id})
-    if not profile:
+    master_profile = await get_master_profile(current_user)
+    if not master_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     
-    # Get all transactions for the user
-    all_transactions = await db.transactions.find({"profile_id": profile["id"]}).to_list(length=None)
+    # Get all transactions for the family
+    all_transactions = await db.transactions.find({"profile_id": master_profile.id}).to_list(length=None)
     
     # Get categories for mapping
     categories = await db.categories.find().to_list(length=None)
