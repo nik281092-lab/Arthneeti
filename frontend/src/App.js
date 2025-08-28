@@ -1171,7 +1171,7 @@ const BudgetTracker = () => {
                   <SelectTrigger className="auth-input">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
-                  <SelectContent className="max-h-60">
+                  <SelectContent className="max-h-60 z-[9999]" container={document.body}>
                     {categories.map(category => (
                       <SelectItem key={category.id} value={category.id}>
                         <div className="flex items-center">
