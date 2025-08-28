@@ -430,10 +430,102 @@ async def change_password(password_data: ChangePassword, current_user: User = De
     new_hashed_password = get_password_hash(password_data.new_password)
     await db.users.update_one(
         {"id": current_user.id},
-        {"$set": {"hashed_password": new_hashed_password}}
+        {"$set": {"hashed_password": new_hashed_password, "must_change_password": False}}
     )
     
     return {"message": "Password changed successfully"}
+
+# Family Member Management Routes
+@api_router.post("/family-members")
+async def add_family_member(member_data: AddFamilyMember, current_user: User = Depends(get_current_user)):
+    # Only master users can add family members
+    if current_user.is_family_member:
+        raise HTTPException(status_code=403, detail="Only master accounts can add family members")
+    
+    # Check if user's profile exists and is family type
+    profile = await db.profiles.find_one({"user_id": current_user.id})
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    if profile["account_type"] != "family":
+        raise HTTPException(status_code=400, detail="Profile must be set to family mode to add family members")
+    
+    # Check if email is already registered as a user
+    existing_user = await db.users.find_one({"email": member_data.email})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check if email is already added as a family member
+    for existing_member in profile.get("family_members", []):
+        if existing_member["email"] == member_data.email:
+            raise HTTPException(status_code=400, detail="Family member already added")
+    
+    # Create user account for family member with default password
+    hashed_password = get_password_hash(DEFAULT_FAMILY_PASSWORD)
+    family_user = User(
+        email=member_data.email,
+        first_name=member_data.first_name,
+        last_name=member_data.last_name,
+        hashed_password=hashed_password,
+        is_family_member=True,
+        master_user_id=current_user.id,
+        family_relation=member_data.relation,
+        must_change_password=True
+    )
+    
+    user_dict = prepare_for_mongo(family_user.dict())
+    await db.users.insert_one(user_dict)
+    
+    # Create family member record and add to profile
+    family_member = FamilyMember(
+        user_id=family_user.id,
+        email=member_data.email,
+        first_name=member_data.first_name,
+        last_name=member_data.last_name,
+        relation=member_data.relation,
+        is_registered=True
+    )
+    
+    # Add family member to profile
+    await db.profiles.update_one(
+        {"user_id": current_user.id},
+        {"$push": {"family_members": prepare_for_mongo(family_member.dict())}}
+    )
+    
+    return {
+        "message": "Family member added successfully",
+        "family_member": family_member.dict(),
+        "credentials": {
+            "email": member_data.email,
+            "default_password": DEFAULT_FAMILY_PASSWORD,
+            "must_change_password": True
+        }
+    }
+
+@api_router.get("/family-members")
+async def get_family_members(current_user: User = Depends(get_current_user)):
+    """Get all family members for the current user's family"""
+    master_profile = await get_master_profile(current_user)
+    if not master_profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    return await get_all_family_members(master_profile.id)
+
+@api_router.get("/profile/family-status")
+async def get_family_status(current_user: User = Depends(get_current_user)):
+    """Get family status and permissions for the current user"""
+    master_profile = await get_master_profile(current_user)
+    if not master_profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    return {
+        "is_family_member": current_user.is_family_member,
+        "is_master": not current_user.is_family_member,
+        "can_add_family_members": not current_user.is_family_member and master_profile.account_type == "family",
+        "can_change_to_individual": not current_user.is_family_member,
+        "master_profile_id": master_profile.id,
+        "family_relation": current_user.family_relation if current_user.is_family_member else None
+    }
 
 # Profile Routes
 @api_router.post("/profile", response_model=Profile)
