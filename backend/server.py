@@ -480,7 +480,12 @@ async def get_filtered_transactions(
     filtered_transactions = []
     
     for transaction in all_transactions:
-        transaction_date = datetime.fromisoformat(transaction["date"])
+        try:
+            # Handle date parsing safely
+            transaction_date = datetime.fromisoformat(transaction["date"].split('T')[0])
+        except (ValueError, AttributeError):
+            # Skip invalid dates
+            continue
         
         # Check year
         if transaction_date.year != year:
@@ -500,12 +505,26 @@ async def get_filtered_transactions(
             if transaction_date.month != month or transaction_date.day != day:
                 continue
         
+        # Create a clean transaction object for response
+        clean_transaction = {
+            "id": transaction["id"],
+            "amount": transaction["amount"],
+            "transaction_type": transaction["transaction_type"],
+            "category_id": transaction["category_id"],
+            "person_name": transaction.get("person_name", ""),
+            "payment_mode": transaction["payment_mode"],
+            "bank_app": transaction.get("bank_app", ""),
+            "description": transaction.get("description", ""),
+            "date": transaction["date"],
+            "created_at": transaction["created_at"]
+        }
+        
         # Add category information
         category = category_map.get(transaction["category_id"])
-        transaction["category_name"] = category["name"] if category else "Unknown"
-        transaction["category_type"] = category["type"] if category else "unknown"
+        clean_transaction["category_name"] = category["name"] if category else "Unknown"
+        clean_transaction["category_type"] = category["type"] if category else "unknown"
         
-        filtered_transactions.append(transaction)
+        filtered_transactions.append(clean_transaction)
     
     # Sort by date descending
     filtered_transactions.sort(key=lambda x: x["date"], reverse=True)
