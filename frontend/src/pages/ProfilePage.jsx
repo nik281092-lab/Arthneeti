@@ -99,24 +99,6 @@ const ProfilePage = () => {
     setLoading(true);
     
     try {
-      // Validate new family members
-      for (const member of newFamilyMembers) {
-        if (!member.email || !member.first_name || !member.last_name) {
-          toast.error('Please fill in all family member details');
-          setLoading(false);
-          return;
-        }
-        
-        // Check for duplicate emails
-        const isDuplicate = familyMembers.some(existing => existing.email === member.email) ||
-                           newFamilyMembers.filter(m => m.email === member.email).length > 1;
-        if (isDuplicate) {
-          toast.error(`Email ${member.email} is already used`);
-          setLoading(false);
-          return;
-        }
-      }
-
       // Update user info
       await axios.put(`${API}/me`, {
         first_name: profileForm.first_name,
@@ -139,28 +121,80 @@ const ProfilePage = () => {
       const response = await axios.put(`${API}/profile`, profileData);
       setProfile(response.data);
       
-      // Create new family member accounts
-      const createdMembers = [];
-      for (const member of newFamilyMembers) {
-        try {
-          const memberResponse = await axios.post(`${API}/family-members`, member);
-          createdMembers.push(memberResponse.data);
-          toast.success(`Family member ${member.first_name} ${member.last_name} added successfully!`);
-        } catch (error) {
-          toast.error(`Failed to add ${member.first_name} ${member.last_name}: ${error.response?.data?.detail || 'Unknown error'}`);
-        }
-      }
-      
-      // Clear new family members after successful creation
-      setNewFamilyMembers([]);
-      
-      // Refresh family members list
-      await fetchFamilyMembers();
-      
-      toast.success('Profile and family members updated successfully!');
+      toast.success('Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error(error.response?.data?.detail || 'Failed to update profile');
+    }
+    setLoading(false);
+  };
+
+  const handleCreateFamilyAccounts = async () => {
+    if (newFamilyMembers.length === 0) {
+      toast.error('No new family members to create accounts for');
+      return;
+    }
+
+    setLoading(true);
+    
+    try {
+      // Validate new family members
+      for (const member of newFamilyMembers) {
+        if (!member.email || !member.first_name || !member.last_name) {
+          toast.error('Please fill in all family member details');
+          setLoading(false);
+          return;
+        }
+        
+        // Check for duplicate emails in new members
+        const duplicateInNew = newFamilyMembers.filter(m => m.email === member.email).length > 1;
+        if (duplicateInNew) {
+          toast.error(`Email ${member.email} is used multiple times`);
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Create new family member accounts
+      const createdMembers = [];
+      let allSuccess = true;
+      
+      for (const member of newFamilyMembers) {
+        try {
+          console.log('Creating family member:', member); // Debug log
+          const memberResponse = await axios.post(`${API}/family-members`, member);
+          console.log('Family member response:', memberResponse.data); // Debug log
+          
+          createdMembers.push(memberResponse.data);
+          
+          // Show detailed success message with credentials
+          const credentials = memberResponse.data.credentials;
+          toast.success(
+            `✅ Account created for ${member.first_name} ${member.last_name}! 
+            Email: ${credentials.email} | Password: ${credentials.default_password}`, 
+            { duration: 8000 }
+          );
+        } catch (error) {
+          console.error('Error creating family member:', error);
+          allSuccess = false;
+          toast.error(`❌ Failed to create account for ${member.first_name} ${member.last_name}: ${error.response?.data?.detail || 'Unknown error'}`);
+        }
+      }
+      
+      if (allSuccess) {
+        // Clear new family members after successful creation
+        setNewFamilyMembers([]);
+        
+        // Refresh family members list
+        await fetchFamilyMembers();
+        
+        toast.success(`🎉 Successfully created ${createdMembers.length} family member account(s)!`);
+      } else {
+        toast.error('Some accounts could not be created. Please check the errors above.');
+      }
+    } catch (error) {
+      console.error('Error in family account creation process:', error);
+      toast.error('Failed to create family accounts');
     }
     setLoading(false);
   };
