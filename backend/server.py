@@ -395,7 +395,10 @@ async def login(user_data: UserLogin):
             "id": user["id"],
             "email": user["email"],
             "first_name": user["first_name"],
-            "last_name": user["last_name"]
+            "last_name": user["last_name"],
+            "is_family_member": user.get("is_family_member", False),
+            "must_change_password": user.get("must_change_password", False),
+            "family_relation": user.get("family_relation")
         }
     )
 
