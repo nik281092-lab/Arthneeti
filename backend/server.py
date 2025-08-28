@@ -546,16 +546,50 @@ async def create_profile(profile_data: ProfileCreate, current_user: User = Depen
 
 @api_router.get("/profile", response_model=Profile)
 async def get_my_profile(current_user: User = Depends(get_current_user)):
-    profile = await db.profiles.find_one({"user_id": current_user.id})
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    return Profile(**profile)
+    if current_user.is_family_member and current_user.master_user_id:
+        # Family member should get their own profile if it exists, otherwise create one linked to master
+        existing_profile = await db.profiles.find_one({"user_id": current_user.id})
+        if existing_profile:
+            return Profile(**existing_profile)
+        
+        # Get master profile to copy settings
+        master_profile = await db.profiles.find_one({"user_id": current_user.master_user_id})
+        if not master_profile:
+            raise HTTPException(status_code=404, detail="Master profile not found")
+        
+        # Create family member profile
+        family_profile = Profile(
+            user_id=current_user.id,
+            first_name=current_user.first_name,
+            last_name=current_user.last_name,
+            email=current_user.email,
+            currency=master_profile["currency"],
+            country=master_profile["country"],
+            account_type=AccountType.FAMILY,
+            is_master=False,
+            master_profile_id=master_profile["id"],
+            family_members=[],
+            monthly_income=None
+        )
+        
+        profile_dict = prepare_for_mongo(family_profile.dict())
+        await db.profiles.insert_one(profile_dict)
+        return family_profile
+    else:
+        profile = await db.profiles.find_one({"user_id": current_user.id})
+        if not profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+        return Profile(**profile)
 
 @api_router.put("/profile", response_model=Profile)
 async def update_profile(profile_data: ProfileUpdate, current_user: User = Depends(get_current_user)):
     existing_profile = await db.profiles.find_one({"user_id": current_user.id})
     if not existing_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
+    
+    # Prevent family members from changing to individual mode
+    if current_user.is_family_member and profile_data.account_type == AccountType.INDIVIDUAL:
+        raise HTTPException(status_code=403, detail="Family members cannot change account type to individual")
     
     update_data = prepare_for_mongo(profile_data.dict())
     await db.profiles.update_one(
