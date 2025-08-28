@@ -496,8 +496,53 @@ const ProfilePage = () => {
                   </div>
                 )}
 
-                {/* New Family Members to Add */}
-                {newFamilyMembers.length > 0 && (
+                {/* Recently Created Accounts */}
+                {recentlyCreated.length > 0 && (
+                  <div>
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-white font-semibold">Recently Created Family Accounts</h4>
+                      <Button
+                        type="button"
+                        onClick={() => setRecentlyCreated([])}
+                        variant="ghost"
+                        size="sm"
+                        className="text-gray-400 hover:text-white"
+                      >
+                        Clear History
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      {recentlyCreated.map((account, index) => (
+                        <div key={index} className="bg-green-950/30 border border-green-700 p-4 rounded-lg">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center">
+                                <User className="w-4 h-4 text-white" />
+                              </div>
+                              <div>
+                                <h5 className="text-green-300 font-medium">{account.name}</h5>
+                                <p className="text-green-400 text-sm">Account Created Successfully!</p>
+                              </div>
+                            </div>
+                            <Badge className={getRelationBadgeColor(account.relation)}>
+                              {account.relation}
+                            </Badge>
+                          </div>
+                          
+                          <div className="bg-green-950/50 border border-green-600 rounded p-3">
+                            <p className="text-green-200 text-sm">
+                              <strong>Login Credentials:</strong><br/>
+                              📧 Email: <code className="bg-green-900/50 px-1 rounded">{account.email}</code><br/>
+                              🔑 Password: <code className="bg-green-900/50 px-1 rounded">{account.password}</code><br/>
+                              ⚠️ Must change password on first login<br/>
+                              🕐 Created: {account.timestamp}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                   <div>
                     <h4 className="text-white font-semibold mb-4">New Family Members to Add</h4>
                     <div className="space-y-4">
