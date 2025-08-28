@@ -118,6 +118,7 @@ class Token(BaseModel):
 # Profile Models
 class FamilyMember(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: Optional[str] = None  # Reference to User when account is created
     email: EmailStr
     first_name: str
     last_name: str
