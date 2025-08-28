@@ -199,11 +199,11 @@ Convert "Edit Profile" from a modal/dropdown option to a full, scrollable page. 
 
   - task: "Implement family member management UI"
     implemented: true
-    working: true
+    working: false
     file: "/app/frontend/src/pages/ProfilePage.jsx"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
         - working: false
         - agent: "main"
@@ -211,6 +211,9 @@ Convert "Edit Profile" from a modal/dropdown option to a full, scrollable page. 
         - working: true
         - agent: "main"
         - comment: "Integrated family member management into ProfilePage with add member modal, family member list display, and proper access control for master/family member roles."
+        - working: false
+        - agent: "testing"
+        - comment: "❌ CRITICAL ISSUE: Family member management UI is implemented correctly but not accessible due to account type selection bug. The family management features are only visible when account_type='family', but users cannot select 'Family' during profile setup due to UI component interaction issues with the select dropdown. The family management UI code is properly implemented with Add Member button, family member forms, email validation, account preview, separate buttons, and access control, but it's hidden for individual accounts."
 
   - task: "Update Person dropdown in Add Entry"
     implemented: true
