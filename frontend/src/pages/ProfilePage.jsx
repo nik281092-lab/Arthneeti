@@ -36,6 +36,9 @@ const ProfilePage = () => {
   // New family members to be created (not yet saved)
   const [newFamilyMembers, setNewFamilyMembers] = useState([]);
 
+  // Recently created family member credentials for display
+  const [recentlyCreated, setRecentlyCreated] = useState([]);
+
   // Password change form
   const [passwordForm, setPasswordForm] = useState({
     current_password: '',
