@@ -28,6 +28,7 @@ const DashboardPage = () => {
   const [availableFilters, setAvailableFilters] = useState({});
   const [hasTransactions, setHasTransactions] = useState(false);
   const [familyMembers, setFamilyMembers] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
 
   // Transaction form
   const [transactionForm, setTransactionForm] = useState({
