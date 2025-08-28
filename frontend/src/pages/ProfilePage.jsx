@@ -170,8 +170,17 @@ const ProfilePage = () => {
           
           createdMembers.push(memberResponse.data);
           
-          // Show detailed success message with credentials
+          // Add to recently created list for display
           const credentials = memberResponse.data.credentials;
+          setRecentlyCreated(prev => [...prev, {
+            name: `${member.first_name} ${member.last_name}`,
+            email: credentials.email,
+            password: credentials.default_password,
+            relation: member.relation,
+            timestamp: new Date().toLocaleString()
+          }]);
+          
+          // Show detailed success message with credentials
           toast.success(
             `✅ Account created for ${member.first_name} ${member.last_name}! 
             Email: ${credentials.email} | Password: ${credentials.default_password}`, 
