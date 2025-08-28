@@ -515,6 +515,18 @@ const ProfilePage = () => {
                                 placeholder="member@example.com"
                                 required
                               />
+                              {/* Email validation feedback */}
+                              {member.email && (
+                                <div className="mt-1">
+                                  {familyMembers.some(existing => existing.email === member.email) ? (
+                                    <p className="text-red-400 text-xs">❌ This email is already used by a family member</p>
+                                  ) : newFamilyMembers.filter((m, i) => m.email === member.email && i !== index).length > 0 ? (
+                                    <p className="text-red-400 text-xs">❌ This email is used multiple times above</p>
+                                  ) : (
+                                    <p className="text-green-400 text-xs">✅ Email looks good</p>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             <div>
                               <Label className="text-white">Relationship *</Label>
@@ -560,7 +572,11 @@ const ProfilePage = () => {
                             <p className="text-blue-300 text-sm">
                               <strong>Account will be created with:</strong><br/>
                               Email: {member.email || '[Enter email]'}<br/>
-                              Password: Artheeti1 (must be changed on first login)
+                              Password: Artheeti1 (must be changed on first login)<br/>
+                              {member.first_name && member.last_name && (
+                                <>Name: {member.first_name} {member.last_name}<br/></>
+                              )}
+                              Relationship: {member.relation}
                             </p>
                           </div>
                         </div>
