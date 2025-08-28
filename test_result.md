@@ -259,10 +259,10 @@ Convert "Edit Profile" from a modal/dropdown option to a full, scrollable page. 
 
 ## test_plan:
   current_focus:
-    - "All backend family management features implemented and tested"
-    - "All frontend features implemented including dedicated profile page, family management UI, person dropdown, and first-time login flow"
-    - "Ready for comprehensive frontend testing"
-  stuck_tasks: []
+    - "Fix account type selection UI issue in profile setup to enable family account creation"
+    - "Account type dropdown interaction needs to be fixed for users to select 'Family' during registration"
+  stuck_tasks: 
+    - "Implement family member management UI"
   test_all: false
   test_priority: "high_first"
 
