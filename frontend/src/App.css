@@ -73,13 +73,35 @@ body {
   z-index: 50;
 }
 
-/* Fix for Select dropdown in modals */
+/* Fix for Select dropdown in modals - Higher z-index */
 [data-radix-popper-content-wrapper] {
-  z-index: 9999 !important;
+  z-index: 99999 !important;
+}
+
+[data-radix-select-content] {
+  z-index: 99999 !important;
+}
+
+[data-radix-select-viewport] {
+  z-index: 99999 !important;
 }
 
 .modal-content [data-state="open"] {
-  z-index: 9999 !important;
+  z-index: 99999 !important;
+}
+
+/* Ensure dropdown content appears above modal overlay */
+[data-radix-portal] {
+  z-index: 99999 !important;
+}
+
+/* Fix for specific modal backdrop */
+[data-radix-dialog-overlay] {
+  z-index: 40 !important;
+}
+
+[data-radix-dialog-content] {
+  z-index: 50 !important;
 }
 
 /* CFR Bar Chart */
