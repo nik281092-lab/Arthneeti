@@ -574,7 +574,19 @@ class BudgetTrackerAPITester:
         original_token = self.token
         self.token = self.family_member_token
         
-        # Try to create/update profile with individual mode
+        # First get the family member's profile (this will create it automatically)
+        success, profile_response = self.run_test(
+            "Get Family Member Profile (Auto-create)",
+            "GET",
+            "profile",
+            200
+        )
+        
+        if not success:
+            self.token = original_token
+            return False
+        
+        # Now try to update profile with individual mode (should be rejected)
         profile_data = {
             "first_name": "Family",
             "last_name": "Member",
