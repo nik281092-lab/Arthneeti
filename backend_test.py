@@ -248,6 +248,131 @@ class BudgetTrackerAPITester:
                     
         return success
 
+    def test_filtered_transactions_month(self):
+        """Test filtered transactions by month - CRITICAL FIX"""
+        current_year = datetime.now().year
+        current_month = datetime.now().month
+        
+        success, response = self.run_test(
+            "Filtered Transactions (Month)",
+            "GET",
+            f"transactions/filtered?filter_type=month&year={current_year}&month={current_month}",
+            200
+        )
+        
+        if success:
+            if 'transactions' in response:
+                print(f"   Found {len(response['transactions'])} transactions for {current_year}-{current_month:02d}")
+                if 'filter_applied' in response:
+                    print(f"   Filter applied: {response['filter_applied']}")
+            else:
+                print("   ⚠️  Response missing 'transactions' key")
+                return False
+        return success
+
+    def test_filtered_transactions_week(self):
+        """Test filtered transactions by week - CRITICAL FIX"""
+        current_year = datetime.now().year
+        current_month = datetime.now().month
+        
+        success, response = self.run_test(
+            "Filtered Transactions (Week)",
+            "GET",
+            f"transactions/filtered?filter_type=week&year={current_year}&month={current_month}&week=1",
+            200
+        )
+        
+        if success:
+            if 'transactions' in response:
+                print(f"   Found {len(response['transactions'])} transactions for week 1 of {current_year}-{current_month:02d}")
+            else:
+                print("   ⚠️  Response missing 'transactions' key")
+                return False
+        return success
+
+    def test_filtered_transactions_day(self):
+        """Test filtered transactions by day - CRITICAL FIX"""
+        current_year = datetime.now().year
+        current_month = datetime.now().month
+        current_day = datetime.now().day
+        
+        success, response = self.run_test(
+            "Filtered Transactions (Day)",
+            "GET",
+            f"transactions/filtered?filter_type=day&year={current_year}&month={current_month}&day={current_day}",
+            200
+        )
+        
+        if success:
+            if 'transactions' in response:
+                print(f"   Found {len(response['transactions'])} transactions for {current_year}-{current_month:02d}-{current_day:02d}")
+            else:
+                print("   ⚠️  Response missing 'transactions' key")
+                return False
+        return success
+
+    def test_filtered_transactions_different_years(self):
+        """Test filtered transactions with different years - Edge case testing"""
+        test_years = [2023, 2024, 2025]
+        
+        for year in test_years:
+            success, response = self.run_test(
+                f"Filtered Transactions (Year {year})",
+                "GET",
+                f"transactions/filtered?filter_type=month&year={year}&month=1",
+                200
+            )
+            
+            if not success:
+                print(f"   ❌ Failed for year {year}")
+                return False
+            else:
+                print(f"   ✅ Year {year} filter working")
+        
+        return True
+
+    def test_profile_update(self):
+        """Test profile update functionality"""
+        if not self.profile_id:
+            print("   ⚠️  No profile ID available, skipping profile update test")
+            return False
+            
+        update_data = {
+            "first_name": "Updated",
+            "last_name": "User",
+            "currency": "EUR",
+            "bank_account": "9876543210",
+            "address": "456 Updated Street",
+            "country": "Germany",
+            "account_type": "individual",
+            "monthly_income": 6000.0
+        }
+        
+        success, response = self.run_test(
+            "Update Profile",
+            "PUT",
+            "profile",
+            200,
+            data=update_data
+        )
+        return success
+
+    def test_change_password(self):
+        """Test password change functionality"""
+        password_data = {
+            "current_password": "TestPass123!",
+            "new_password": "NewTestPass456!"
+        }
+        
+        success, response = self.run_test(
+            "Change Password",
+            "POST",
+            "change-password",
+            200,
+            data=password_data
+        )
+        return success
+
 def main():
     print("🚀 Starting Budget Tracker API Tests")
     print("=" * 50)
