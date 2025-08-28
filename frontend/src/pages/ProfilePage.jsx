@@ -242,19 +242,20 @@ const ProfilePage = () => {
           <p className="text-gray-300">Manage your profile and family settings</p>
         </div>
 
-        {/* Profile Information */}
-        <Card className="dashboard-card">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <User className="w-5 h-5 mr-2" />
-              Profile Information
-            </CardTitle>
-            <CardDescription className="text-gray-400">
-              Update your personal information and preferences
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleProfileUpdate} className="space-y-6">
+        {/* Main Profile Form */}
+        <form onSubmit={handleProfileUpdate} className="space-y-8">
+          {/* Profile Information */}
+          <Card className="dashboard-card">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center">
+                <User className="w-5 h-5 mr-2" />
+                Profile Information
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Update your personal information and preferences
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="first_name" className="text-white">First Name *</Label>
@@ -386,53 +387,180 @@ const ProfilePage = () => {
                   <Lock className="w-4 h-4 mr-2" />
                   Change Password
                 </Button>
-
-                <Button 
-                  type="submit" 
-                  disabled={loading}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  {loading ? 'Saving...' : 'Save Profile'}
-                </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Family Management - Only for master users */}
-        {familyStatus?.can_add_family_members && (
-          <Card className="dashboard-card">
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
-                  <CardTitle className="text-white flex items-center">
-                    <Users className="w-5 h-5 mr-2" />
-                    Family Management
-                  </CardTitle>
-                  <CardDescription className="text-gray-400">
-                    Manage family members and their access
-                  </CardDescription>
+          {/* Family Management - Only for master users */}
+          {familyStatus?.can_add_family_members && (
+            <Card className="dashboard-card">
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle className="text-white flex items-center">
+                      <Users className="w-5 h-5 mr-2" />
+                      Family Management
+                    </CardTitle>
+                    <CardDescription className="text-gray-400">
+                      Add family members who will share access to budget tracking
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    type="button"
+                    onClick={addNewFamilyMember}
+                    variant="outline"
+                    className="border-emerald-600 text-emerald-400 hover:bg-emerald-600 hover:text-white"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Member
+                  </Button>
                 </div>
-                <Button 
-                  onClick={() => setShowAddFamilyMember(true)}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Family Member
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {familyMembers.length === 0 ? (
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Existing Family Members */}
+                {familyMembers.length > 0 && (
+                  <div>
+                    <h4 className="text-white font-semibold mb-4">Current Family Members</h4>
+                    <div className="space-y-4">
+                      {familyMembers.map((member) => (
+                        <div key={member.id} className="bg-white/5 p-4 rounded-lg flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center">
+                              <User className="w-5 h-5 text-white" />
+                            </div>
+                            <div>
+                              <div className="text-white font-semibold">{member.name}</div>
+                              <div className="text-gray-400 text-sm flex items-center space-x-2">
+                                <Mail className="w-3 h-3" />
+                                <span>{member.email}</span>
+                              </div>
+                            </div>
+                            <Badge className={getRelationBadgeColor(member.relation)}>
+                              {member.relation}
+                            </Badge>
+                            {member.is_master && (
+                              <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                                Master
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* New Family Members to Add */}
+                {newFamilyMembers.length > 0 && (
+                  <div>
+                    <h4 className="text-white font-semibold mb-4">New Family Members to Add</h4>
+                    <div className="space-y-4">
+                      {newFamilyMembers.map((member, index) => (
+                        <div key={index} className="bg-blue-950/30 border border-blue-700 p-4 rounded-lg">
+                          <div className="flex justify-between items-start mb-4">
+                            <h5 className="text-blue-300 font-medium">New Member #{index + 1}</h5>
+                            <Button
+                              type="button"
+                              onClick={() => removeNewFamilyMember(index)}
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-400 hover:bg-red-900/20 hover:text-red-300"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-white">Email *</Label>
+                              <Input
+                                type="email"
+                                value={member.email}
+                                onChange={(e) => updateNewFamilyMember(index, 'email', e.target.value)}
+                                className="auth-input"
+                                placeholder="member@example.com"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-white">Relationship *</Label>
+                              <Select 
+                                value={member.relation} 
+                                onValueChange={(value) => updateNewFamilyMember(index, 'relation', value)}
+                              >
+                                <SelectTrigger className="auth-input">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="spouse">Spouse</SelectItem>
+                                  <SelectItem value="child">Child</SelectItem>
+                                  <SelectItem value="parent">Parent</SelectItem>
+                                  <SelectItem value="sibling">Sibling</SelectItem>
+                                  <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-white">First Name *</Label>
+                              <Input
+                                value={member.first_name}
+                                onChange={(e) => updateNewFamilyMember(index, 'first_name', e.target.value)}
+                                className="auth-input"
+                                placeholder="John"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-white">Last Name *</Label>
+                              <Input
+                                value={member.last_name}
+                                onChange={(e) => updateNewFamilyMember(index, 'last_name', e.target.value)}
+                                className="auth-input"
+                                placeholder="Doe"
+                                required
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="mt-4 bg-blue-950/50 border border-blue-700 rounded-lg p-3">
+                            <p className="text-blue-300 text-sm">
+                              <strong>Account will be created with:</strong><br/>
+                              Email: {member.email || '[Enter email]'}<br/>
+                              Password: Artheeti1 (must be changed on first login)
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {newFamilyMembers.length === 0 && familyMembers.length === 0 && (
                   <div className="text-center py-8">
                     <Users className="w-12 h-12 text-gray-500 mx-auto mb-4" />
                     <p className="text-gray-400">No family members added yet</p>
-                    <p className="text-sm text-gray-500">Add family members to share budget tracking</p>
+                    <p className="text-sm text-gray-500">Click "Add Member" to start adding family members</p>
                   </div>
-                ) : (
-                  familyMembers.map((member) => (
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Family Members List - For family members to see family */}
+          {familyStatus?.is_family_member && familyMembers.length > 0 && (
+            <Card className="dashboard-card">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <Users className="w-5 h-5 mr-2" />
+                  Family Members
+                </CardTitle>
+                <CardDescription className="text-gray-400">
+                  Your family members
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {familyMembers.map((member) => (
                     <div key={member.id} className="bg-white/5 p-4 rounded-lg flex items-center justify-between">
                       <div className="flex items-center space-x-4">
                         <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center">
@@ -455,55 +583,24 @@ const ProfilePage = () => {
                         )}
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Family Members List - For family members to see family */}
-        {familyStatus?.is_family_member && familyMembers.length > 0 && (
-          <Card className="dashboard-card">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center">
-                <Users className="w-5 h-5 mr-2" />
-                Family Members
-              </CardTitle>
-              <CardDescription className="text-gray-400">
-                Your family members
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {familyMembers.map((member) => (
-                  <div key={member.id} className="bg-white/5 p-4 rounded-lg flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <div className="text-white font-semibold">{member.name}</div>
-                        <div className="text-gray-400 text-sm flex items-center space-x-2">
-                          <Mail className="w-3 h-3" />
-                          <span>{member.email}</span>
-                        </div>
-                      </div>
-                      <Badge className={getRelationBadgeColor(member.relation)}>
-                        {member.relation}
-                      </Badge>
-                      {member.is_master && (
-                        <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-                          Master
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+          {/* Save Profile Button */}
+          <div className="flex justify-end">
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 text-lg"
+            >
+              <Save className="w-5 h-5 mr-2" />
+              {loading ? 'Saving...' : 'Save Profile & Create Family Accounts'}
+            </Button>
+          </div>
+        </form>
       </div>
 
       {/* Add Family Member Modal */}
