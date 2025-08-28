@@ -104,6 +104,12 @@ class UserUpdate(BaseModel):
     last_name: str
     email: EmailStr
 
+class AddFamilyMember(BaseModel):
+    email: EmailStr
+    first_name: str
+    last_name: str
+    relation: FamilyRelation
+
 class Token(BaseModel):
     access_token: str
     token_type: str
