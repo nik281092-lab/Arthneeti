@@ -616,14 +616,14 @@ async def create_category(name: str, category_type: CategoryType, current_user: 
 # Transaction Routes
 @api_router.post("/transactions", response_model=Transaction)
 async def create_transaction(transaction_data: TransactionCreate, current_user: User = Depends(get_current_user)):
-    # Get user's profile
-    profile = await db.profiles.find_one({"user_id": current_user.id})
-    if not profile:
+    # Get the master profile for family sharing
+    master_profile = await get_master_profile(current_user)
+    if not master_profile:
         raise HTTPException(status_code=404, detail="Profile not found. Please create a profile first.")
     
     transaction = Transaction(
-        profile_id=profile["id"],
-        user_id=current_user.id,
+        profile_id=master_profile.id,  # Always use master profile for shared access
+        user_id=current_user.id,      # Track who created the transaction
         **transaction_data.dict()
     )
     transaction_dict = prepare_for_mongo(transaction.dict())
@@ -632,11 +632,12 @@ async def create_transaction(transaction_data: TransactionCreate, current_user: 
 
 @api_router.get("/transactions", response_model=List[Transaction])
 async def get_my_transactions(current_user: User = Depends(get_current_user)):
-    profile = await db.profiles.find_one({"user_id": current_user.id})
-    if not profile:
+    master_profile = await get_master_profile(current_user)
+    if not master_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     
-    transactions = await db.transactions.find({"profile_id": profile["id"]}).to_list(length=None)
+    # Get all transactions for the family (using master profile)
+    transactions = await db.transactions.find({"profile_id": master_profile.id}).to_list(length=None)
     return [Transaction(**transaction) for transaction in transactions]
 
 @api_router.get("/transactions/available-filters")
