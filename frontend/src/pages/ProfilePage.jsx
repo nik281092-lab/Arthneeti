@@ -230,6 +230,20 @@ const ProfilePage = () => {
     setNewFamilyMembers(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleRemoveFamilyMember = async (memberId, memberName) => {
+    if (window.confirm(`Are you sure you want to remove ${memberName} from the family? Their account will be deactivated.`)) {
+      try {
+        setLoading(true);
+        // Note: This would need a backend endpoint to deactivate the user account
+        // For now, we'll show a message that this feature is coming soon
+        toast.error('Remove family member functionality coming soon! Currently family members can only be added.');
+      } catch (error) {
+        toast.error('Failed to remove family member');
+      }
+      setLoading(false);
+    }
+  };
+
   const handlePasswordChange = async (e) => {
     e.preventDefault();
     
