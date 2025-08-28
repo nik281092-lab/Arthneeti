@@ -65,6 +65,11 @@ class PaymentMode(str, Enum):
     CREDIT_CARD = "credit_card"
     DEBIT_CARD = "debit_card"
 
+class FilterType(str, Enum):
+    DAY = "day"
+    WEEK = "week" 
+    MONTH = "month"
+
 # Authentication Models
 class UserSignup(BaseModel):
     email: EmailStr
@@ -76,6 +81,10 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
 class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     email: EmailStr
@@ -84,6 +93,11 @@ class User(BaseModel):
     hashed_password: str
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class UserUpdate(BaseModel):
+    first_name: str
+    last_name: str
+    email: EmailStr
 
 class Token(BaseModel):
     access_token: str
@@ -126,6 +140,16 @@ class ProfileCreate(BaseModel):
     account_type: AccountType
     monthly_income: Optional[float] = None
 
+class ProfileUpdate(BaseModel):
+    first_name: str
+    last_name: str
+    currency: str = "INR"
+    bank_account: Optional[str] = None
+    address: Optional[str] = None
+    country: str
+    account_type: AccountType
+    monthly_income: Optional[float] = None
+
 class Category(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
@@ -157,6 +181,16 @@ class TransactionCreate(BaseModel):
     description: Optional[str] = None
     date: str
 
+class TransactionUpdate(BaseModel):
+    amount: Optional[float] = None
+    transaction_type: Optional[TransactionType] = None
+    category_id: Optional[str] = None
+    person_name: Optional[str] = None
+    payment_mode: Optional[PaymentMode] = None
+    bank_app: Optional[str] = None
+    description: Optional[str] = None
+    date: Optional[str] = None
+
 class CFRAnalysis(BaseModel):
     category_type: CategoryType
     budgeted_amount: float
@@ -164,6 +198,13 @@ class CFRAnalysis(BaseModel):
     deviation_percentage: float
     status: str
     recommended_percentage: float
+
+class TransactionFilter(BaseModel):
+    filter_type: FilterType
+    year: int
+    month: Optional[int] = None
+    week: Optional[int] = None
+    day: Optional[int] = None
 
 # Helper functions
 def prepare_for_mongo(data):
@@ -305,6 +346,38 @@ async def login(user_data: UserLogin):
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
     return current_user
 
+@api_router.put("/me", response_model=User)
+async def update_current_user(user_update: UserUpdate, current_user: User = Depends(get_current_user)):
+    # Check if email is being changed and if it's already taken
+    if user_update.email != current_user.email:
+        existing_user = await db.users.find_one({"email": user_update.email})
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+    
+    update_data = prepare_for_mongo(user_update.dict())
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": update_data}
+    )
+    
+    updated_user = await db.users.find_one({"id": current_user.id})
+    return User(**updated_user)
+
+@api_router.post("/change-password")
+async def change_password(password_data: ChangePassword, current_user: User = Depends(get_current_user)):
+    # Verify current password
+    if not verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    
+    # Hash new password and update
+    new_hashed_password = get_password_hash(password_data.new_password)
+    await db.users.update_one(
+        {"id": current_user.id},
+        {"$set": {"hashed_password": new_hashed_password}}
+    )
+    
+    return {"message": "Password changed successfully"}
+
 # Profile Routes
 @api_router.post("/profile", response_model=Profile)
 async def create_profile(profile_data: ProfileCreate, current_user: User = Depends(get_current_user)):
@@ -330,7 +403,7 @@ async def get_my_profile(current_user: User = Depends(get_current_user)):
     return Profile(**profile)
 
 @api_router.put("/profile", response_model=Profile)
-async def update_profile(profile_data: ProfileCreate, current_user: User = Depends(get_current_user)):
+async def update_profile(profile_data: ProfileUpdate, current_user: User = Depends(get_current_user)):
     existing_profile = await db.profiles.find_one({"user_id": current_user.id})
     if not existing_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
@@ -382,6 +455,120 @@ async def get_my_transactions(current_user: User = Depends(get_current_user)):
     
     transactions = await db.transactions.find({"profile_id": profile["id"]}).to_list(length=None)
     return [Transaction(**transaction) for transaction in transactions]
+
+@api_router.get("/transactions/filtered")
+async def get_filtered_transactions(
+    filter_type: FilterType,
+    year: int,
+    month: Optional[int] = None,
+    week: Optional[int] = None,
+    day: Optional[int] = None,
+    current_user: User = Depends(get_current_user)
+):
+    profile = await db.profiles.find_one({"user_id": current_user.id})
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    # Get all transactions for the user
+    all_transactions = await db.transactions.find({"profile_id": profile["id"]}).to_list(length=None)
+    
+    # Get categories for mapping
+    categories = await db.categories.find().to_list(length=None)
+    category_map = {cat["id"]: cat for cat in categories}
+    
+    # Filter transactions based on criteria
+    filtered_transactions = []
+    
+    for transaction in all_transactions:
+        transaction_date = datetime.fromisoformat(transaction["date"])
+        
+        # Check year
+        if transaction_date.year != year:
+            continue
+            
+        if filter_type == FilterType.MONTH and month:
+            if transaction_date.month != month:
+                continue
+        elif filter_type == FilterType.WEEK and week and month:
+            # Calculate week of month
+            first_day = datetime(year, month, 1)
+            days_offset = (transaction_date - first_day).days
+            week_of_month = (days_offset // 7) + 1
+            if week_of_month != week:
+                continue
+        elif filter_type == FilterType.DAY and day and month:
+            if transaction_date.month != month or transaction_date.day != day:
+                continue
+        
+        # Add category information
+        category = category_map.get(transaction["category_id"])
+        transaction["category_name"] = category["name"] if category else "Unknown"
+        transaction["category_type"] = category["type"] if category else "unknown"
+        
+        filtered_transactions.append(transaction)
+    
+    # Sort by date descending
+    filtered_transactions.sort(key=lambda x: x["date"], reverse=True)
+    
+    return {
+        "transactions": filtered_transactions,
+        "total_count": len(filtered_transactions),
+        "filter_applied": {
+            "type": filter_type,
+            "year": year,
+            "month": month,
+            "week": week,
+            "day": day
+        }
+    }
+
+@api_router.put("/transactions/{transaction_id}", response_model=Transaction)
+async def update_transaction(
+    transaction_id: str, 
+    transaction_data: TransactionUpdate, 
+    current_user: User = Depends(get_current_user)
+):
+    # Check if transaction exists and belongs to user
+    profile = await db.profiles.find_one({"user_id": current_user.id})
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    existing_transaction = await db.transactions.find_one({
+        "id": transaction_id,
+        "profile_id": profile["id"]
+    })
+    
+    if not existing_transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    # Update only provided fields
+    update_data = {k: v for k, v in transaction_data.dict().items() if v is not None}
+    update_data = prepare_for_mongo(update_data)
+    
+    await db.transactions.update_one(
+        {"id": transaction_id},
+        {"$set": update_data}
+    )
+    
+    updated_transaction = await db.transactions.find_one({"id": transaction_id})
+    return Transaction(**updated_transaction)
+
+@api_router.delete("/transactions/{transaction_id}")
+async def delete_transaction(transaction_id: str, current_user: User = Depends(get_current_user)):
+    # Check if transaction exists and belongs to user
+    profile = await db.profiles.find_one({"user_id": current_user.id})
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    result = await db.transactions.delete_one({
+        "id": transaction_id,
+        "profile_id": profile["id"]
+    })
+    
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    return {"message": "Transaction deleted successfully"}
 
 # Dashboard Routes
 @api_router.get("/dashboard")

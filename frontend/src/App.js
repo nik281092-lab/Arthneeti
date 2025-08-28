@@ -3,7 +3,8 @@ import "./App.css";
 import axios from "axios";
 import { 
   Calendar, User, DollarSign, TrendingUp, TrendingDown, Plus, Settings, 
-  Home as HomeIcon, LogOut, Eye, EyeOff, PieChart, BarChart3, ArrowRight
+  Home as HomeIcon, LogOut, Eye, EyeOff, PieChart, BarChart3, ArrowRight,
+  Save, Edit3, Trash2, Filter, Search, ChevronLeft, ChevronRight, List
 } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
@@ -26,6 +27,9 @@ const BudgetTracker = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [allTransactions, setAllTransactions] = useState([]);
+  const [filteredTransactions, setFilteredTransactions] = useState([]);
 
   // Auth forms
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
@@ -49,6 +53,26 @@ const BudgetTracker = () => {
     monthly_income: ''
   });
 
+  // Profile settings form
+  const [profileSettingsForm, setProfileSettingsForm] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    currency: 'INR',
+    bank_account: '',
+    address: '',
+    country: '',
+    account_type: 'individual',
+    monthly_income: ''
+  });
+
+  // Password change form
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+
   // Transaction form
   const [transactionForm, setTransactionForm] = useState({
     amount: '',
@@ -60,6 +84,17 @@ const BudgetTracker = () => {
     description: '',
     date: new Date().toISOString().split('T')[0]
   });
+
+  // Filter form for transactions
+  const [filterForm, setFilterForm] = useState({
+    filter_type: 'month',
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+    week: 1,
+    day: 1
+  });
+
+  const [editingTransaction, setEditingTransaction] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -78,7 +113,19 @@ const BudgetTracker = () => {
       try {
         const profileResponse = await axios.get(`${API}/profile`);
         setProfile(profileResponse.data);
+        setProfileSettingsForm({
+          first_name: profileResponse.data.first_name,
+          last_name: profileResponse.data.last_name,
+          email: userResponse.data.email,
+          currency: profileResponse.data.currency,
+          bank_account: profileResponse.data.bank_account || '',
+          address: profileResponse.data.address || '',
+          country: profileResponse.data.country,
+          account_type: profileResponse.data.account_type,
+          monthly_income: profileResponse.data.monthly_income || ''
+        });
         await fetchDashboardData();
+        await fetchAllTransactions();
         setCurrentView('dashboard');
       } catch (error) {
         if (error.response?.status === 404) {
@@ -107,6 +154,45 @@ const BudgetTracker = () => {
       setDashboardData(response.data);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+    }
+  };
+
+  const fetchAllTransactions = async () => {
+    try {
+      const response = await axios.get(`${API}/transactions`);
+      setAllTransactions(response.data);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    }
+  };
+
+  const fetchFilteredTransactions = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        filter_type: filterForm.filter_type,
+        year: filterForm.year.toString()
+      });
+      
+      if (filterForm.filter_type === 'month' && filterForm.month) {
+        params.append('month', filterForm.month.toString());
+      }
+      if (filterForm.filter_type === 'week' && filterForm.week && filterForm.month) {
+        params.append('month', filterForm.month.toString());
+        params.append('week', filterForm.week.toString());
+      }
+      if (filterForm.filter_type === 'day' && filterForm.day && filterForm.month) {
+        params.append('month', filterForm.month.toString());
+        params.append('day', filterForm.day.toString());
+      }
+      
+      const response = await axios.get(`${API}/transactions/filtered?${params}`);
+      setFilteredTransactions(response.data.transactions);
+    } catch (error) {
+      console.error('Error fetching filtered transactions:', error);
+      toast.error('Failed to fetch transactions');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -156,14 +242,96 @@ const BudgetTracker = () => {
     setLoading(false);
   };
 
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      // Update user info
+      await axios.put(`${API}/me`, {
+        first_name: profileSettingsForm.first_name,
+        last_name: profileSettingsForm.last_name,
+        email: profileSettingsForm.email
+      });
+
+      // Update profile info
+      const profileData = {
+        first_name: profileSettingsForm.first_name,
+        last_name: profileSettingsForm.last_name,
+        currency: profileSettingsForm.currency,
+        bank_account: profileSettingsForm.bank_account,
+        address: profileSettingsForm.address,
+        country: profileSettingsForm.country,
+        account_type: profileSettingsForm.account_type,
+        monthly_income: profileSettingsForm.monthly_income ? parseFloat(profileSettingsForm.monthly_income) : null
+      };
+      
+      const response = await axios.put(`${API}/profile`, profileData);
+      setProfile(response.data);
+      
+      // Update user state
+      setUser(prev => ({
+        ...prev,
+        first_name: profileSettingsForm.first_name,
+        last_name: profileSettingsForm.last_name,
+        email: profileSettingsForm.email
+      }));
+      
+      await fetchDashboardData();
+      setShowProfileSettings(false);
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error(error.response?.data?.detail || 'Failed to update profile');
+    }
+    setLoading(false);
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    
+    if (passwordForm.new_password !== passwordForm.confirm_password) {
+      toast.error('New passwords do not match');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      await axios.post(`${API}/change-password`, {
+        current_password: passwordForm.current_password,
+        new_password: passwordForm.new_password
+      });
+      
+      setPasswordForm({
+        current_password: '',
+        new_password: '',
+        confirm_password: ''
+      });
+      
+      toast.success('Password changed successfully!');
+    } catch (error) {
+      console.error('Error changing password:', error);
+      toast.error(error.response?.data?.detail || 'Failed to change password');
+    }
+    setLoading(false);
+  };
+
   const handleTransactionSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post(`${API}/transactions`, {
+      const transactionData = {
         ...transactionForm,
         amount: parseFloat(transactionForm.amount)
-      });
+      };
+
+      if (editingTransaction) {
+        await axios.put(`${API}/transactions/${editingTransaction.id}`, transactionData);
+        toast.success('Transaction updated successfully!');
+        setEditingTransaction(null);
+      } else {
+        await axios.post(`${API}/transactions`, transactionData);
+        toast.success('Transaction added successfully!');
+      }
       
       setTransactionForm({
         amount: '',
@@ -177,13 +345,42 @@ const BudgetTracker = () => {
       });
       
       await fetchDashboardData();
+      await fetchAllTransactions();
       setShowAddTransaction(false);
-      toast.success('Transaction added successfully!');
     } catch (error) {
-      console.error('Error adding transaction:', error);
-      toast.error(error.response?.data?.detail || 'Failed to add transaction');
+      console.error('Error with transaction:', error);
+      toast.error(error.response?.data?.detail || 'Failed to process transaction');
     }
     setLoading(false);
+  };
+
+  const handleEditTransaction = (transaction) => {
+    setEditingTransaction(transaction);
+    setTransactionForm({
+      amount: transaction.amount.toString(),
+      transaction_type: transaction.transaction_type,
+      category_id: transaction.category_id,
+      person_name: transaction.person_name || '',
+      payment_mode: transaction.payment_mode,
+      bank_app: transaction.bank_app || '',
+      description: transaction.description || '',
+      date: transaction.date
+    });
+    setShowAddTransaction(true);
+  };
+
+  const handleDeleteTransaction = async (transactionId) => {
+    if (window.confirm('Are you sure you want to delete this transaction?')) {
+      try {
+        await axios.delete(`${API}/transactions/${transactionId}`);
+        await fetchDashboardData();
+        await fetchAllTransactions();
+        toast.success('Transaction deleted successfully!');
+      } catch (error) {
+        console.error('Error deleting transaction:', error);
+        toast.error('Failed to delete transaction');
+      }
+    }
   };
 
   const logout = () => {
@@ -212,6 +409,10 @@ const BudgetTracker = () => {
       case 'undershoot': return 'text-yellow-600';
       default: return 'text-gray-600';
     }
+  };
+
+  const formatCurrency = (amount) => {
+    return `${profile?.currency || 'INR'} ${amount.toLocaleString()}`;
   };
 
   // Landing Page
@@ -446,7 +647,8 @@ const BudgetTracker = () => {
                 disabled={loading}
                 className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                {loading ? 'Creating Profile...' : 'Create Profile'}
+                <Save className="w-4 h-4 mr-2" />
+                {loading ? 'Creating Profile...' : 'Save Profile'}
               </Button>
             </form>
           </div>
@@ -467,7 +669,7 @@ const BudgetTracker = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={() => setCurrentView('profile-settings')}
+              onClick={() => setShowProfileSettings(true)}
               className="text-white hover:bg-white/10"
             >
               <Settings className="w-4 h-4" />
@@ -485,158 +687,375 @@ const BudgetTracker = () => {
       </nav>
 
       <div className="max-w-7xl mx-auto p-6">
-        {dashboardData && (
-          <div className="space-y-6">
-            {/* Header with Add Button */}
-            <div className="flex justify-between items-center">
-              <h2 className="text-3xl font-bold text-white">Dashboard</h2>
-              <Button 
-                onClick={() => setShowAddTransaction(true)}
-                className="bg-emerald-600 hover:bg-emerald-700"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Entry
-              </Button>
-            </div>
+        <Tabs defaultValue="dashboard" className="space-y-6">
+          <TabsList className="glass-tabs">
+            <TabsTrigger value="dashboard" className="tab-trigger">
+              <HomeIcon className="w-4 h-4 mr-2" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="all-entries" className="tab-trigger">
+              <List className="w-4 h-4 mr-2" />
+              View All Entries
+            </TabsTrigger>
+          </TabsList>
 
-            {/* Summary Cards */}
-            <div className="grid md:grid-cols-4 gap-6">
-              <Card className="dashboard-card">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-green-400 flex items-center">
-                    <TrendingUp className="w-5 h-5 mr-2" />
-                    Income
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-white">
-                    {profile?.currency} {dashboardData.total_income.toLocaleString()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="dashboard-card">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-red-400 flex items-center">
-                    <TrendingDown className="w-5 h-5 mr-2" />
-                    Expenses
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-white">
-                    {profile?.currency} {dashboardData.total_expenses.toLocaleString()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="dashboard-card">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-blue-400 flex items-center">
-                    <DollarSign className="w-5 h-5 mr-2" />
-                    Balance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-2xl font-bold ${dashboardData.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {profile?.currency} {dashboardData.balance.toLocaleString()}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="dashboard-card">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-purple-400 flex items-center">
-                    <PieChart className="w-5 h-5 mr-2" />
-                    Savings Rate
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-white">
-                    {dashboardData.total_income > 0 
-                      ? ((dashboardData.balance / dashboardData.total_income) * 100).toFixed(1)
-                      : 0}%
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* CFR Analysis */}
-            <Card className="dashboard-card">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <BarChart3 className="w-5 h-5 mr-2" />
-                  Clever Finance Rule (CFR) Analysis
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  Needs: 50% | Wants: 30% | Savings: 20%
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {dashboardData.cfr_analysis.map((analysis, index) => (
-                    <div key={index} className="cfr-container">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <Badge className={getCategoryTypeColor(analysis.category_type)}>
-                            {analysis.category_type.toUpperCase()} ({analysis.recommended_percentage}%)
-                          </Badge>
-                          <span className="text-white font-medium">
-                            {profile?.currency} {analysis.actual_amount.toLocaleString()} / {analysis.budgeted_amount.toLocaleString()}
-                          </span>
-                        </div>
-                        <span className={`font-bold ${getStatusColor(analysis.status)}`}>
-                          {analysis.deviation_percentage.toFixed(1)}%
-                        </span>
-                      </div>
-                      
-                      <div className="cfr-bar">
-                        <div 
-                          className={`cfr-bar-fill ${
-                            analysis.status === 'within_tolerance' ? 'bg-green-500' :
-                            analysis.status === 'overshoot' ? 'bg-red-500' : 'bg-yellow-500'
-                          }`}
-                          style={{ 
-                            width: `${Math.min(100, (analysis.actual_amount / analysis.budgeted_amount) * 100)}%` 
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
+          <TabsContent value="dashboard">
+            {dashboardData && (
+              <div className="space-y-6">
+                {/* Header with Add Button */}
+                <div className="flex justify-between items-center">
+                  <h2 className="text-3xl font-bold text-white">Dashboard</h2>
+                  <Button 
+                    onClick={() => setShowAddTransaction(true)}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Entry
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Category-wise Spending */}
-            {dashboardData.category_wise_spending && Object.keys(dashboardData.category_wise_spending).length > 0 && (
+                {/* Summary Cards */}
+                <div className="grid md:grid-cols-4 gap-6">
+                  <Card className="dashboard-card">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-green-400 flex items-center">
+                        <TrendingUp className="w-5 h-5 mr-2" />
+                        Income
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-white">
+                        {formatCurrency(dashboardData.total_income)}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="dashboard-card">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-red-400 flex items-center">
+                        <TrendingDown className="w-5 h-5 mr-2" />
+                        Expenses
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-white">
+                        {formatCurrency(dashboardData.total_expenses)}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="dashboard-card">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-blue-400 flex items-center">
+                        <DollarSign className="w-5 h-5 mr-2" />
+                        Balance
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className={`text-2xl font-bold ${dashboardData.balance >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {formatCurrency(dashboardData.balance)}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="dashboard-card">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-purple-400 flex items-center">
+                        <PieChart className="w-5 h-5 mr-2" />
+                        Savings Rate
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-white">
+                        {dashboardData.total_income > 0 
+                          ? ((dashboardData.balance / dashboardData.total_income) * 100).toFixed(1)
+                          : 0}%
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* CFR Analysis */}
+                <Card className="dashboard-card">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center">
+                      <BarChart3 className="w-5 h-5 mr-2" />
+                      Clever Finance Rule (CFR) Analysis
+                    </CardTitle>
+                    <CardDescription className="text-gray-400">
+                      Needs: 50% | Wants: 30% | Savings: 20%
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {dashboardData.cfr_analysis.map((analysis, index) => (
+                        <div key={index} className="cfr-container">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <Badge className={getCategoryTypeColor(analysis.category_type)}>
+                                {analysis.category_type.toUpperCase()} ({analysis.recommended_percentage}%)
+                              </Badge>
+                              <span className="text-white font-medium">
+                                {formatCurrency(analysis.actual_amount)} / {formatCurrency(analysis.budgeted_amount)}
+                              </span>
+                            </div>
+                            <span className={`font-bold ${getStatusColor(analysis.status)}`}>
+                              {analysis.deviation_percentage.toFixed(1)}%
+                            </span>
+                          </div>
+                          
+                          <div className="cfr-bar">
+                            <div 
+                              className={`cfr-bar-fill ${
+                                analysis.status === 'within_tolerance' ? 'bg-green-500' :
+                                analysis.status === 'overshoot' ? 'bg-red-500' : 'bg-yellow-500'
+                              }`}
+                              style={{ 
+                                width: `${Math.min(100, (analysis.actual_amount / analysis.budgeted_amount) * 100)}%` 
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Category-wise Spending */}
+                {dashboardData.category_wise_spending && Object.keys(dashboardData.category_wise_spending).length > 0 && (
+                  <Card className="dashboard-card">
+                    <CardHeader>
+                      <CardTitle className="text-white">Category-wise Spending</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(dashboardData.category_wise_spending).map(([category, amount]) => (
+                          <div key={category} className="flex justify-between items-center bg-white/5 p-3 rounded-lg">
+                            <span className="text-gray-300">{category}</span>
+                            <span className="text-white font-semibold">
+                              {formatCurrency(amount)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="all-entries">
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-3xl font-bold text-white">All Entries</h2>
+                <Button 
+                  onClick={() => setShowAddTransaction(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Entry
+                </Button>
+              </div>
+
+              {/* Filters */}
               <Card className="dashboard-card">
                 <CardHeader>
-                  <CardTitle className="text-white">Category-wise Spending</CardTitle>
+                  <CardTitle className="text-white flex items-center">
+                    <Filter className="w-5 h-5 mr-2" />
+                    Filter Transactions
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {Object.entries(dashboardData.category_wise_spending).map(([category, amount]) => (
-                      <div key={category} className="flex justify-between items-center bg-white/5 p-3 rounded-lg">
-                        <span className="text-gray-300">{category}</span>
-                        <span className="text-white font-semibold">
-                          {profile?.currency} {amount.toLocaleString()}
-                        </span>
+                  <div className="grid md:grid-cols-5 gap-4">
+                    <div>
+                      <Label htmlFor="filter_type" className="text-white">View By</Label>
+                      <Select 
+                        value={filterForm.filter_type} 
+                        onValueChange={(value) => setFilterForm(prev => ({ ...prev, filter_type: value }))}
+                      >
+                        <SelectTrigger className="auth-input">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="day">Day</SelectItem>
+                          <SelectItem value="week">Week</SelectItem>
+                          <SelectItem value="month">Month</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="year" className="text-white">Year</Label>
+                      <Input
+                        id="year"
+                        type="number"
+                        min="2020"
+                        max="2030"
+                        value={filterForm.year}
+                        onChange={(e) => setFilterForm(prev => ({ ...prev, year: parseInt(e.target.value) }))}
+                        className="auth-input"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="month" className="text-white">Month</Label>
+                      <Select 
+                        value={filterForm.month.toString()} 
+                        onValueChange={(value) => setFilterForm(prev => ({ ...prev, month: parseInt(value) }))}
+                      >
+                        <SelectTrigger className="auth-input">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 12 }, (_, i) => (
+                            <SelectItem key={i + 1} value={(i + 1).toString()}>
+                              {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {filterForm.filter_type === 'week' && (
+                      <div>
+                        <Label htmlFor="week" className="text-white">Week</Label>
+                        <Select 
+                          value={filterForm.week.toString()} 
+                          onValueChange={(value) => setFilterForm(prev => ({ ...prev, week: parseInt(value) }))}
+                        >
+                          <SelectTrigger className="auth-input">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">Week 1</SelectItem>
+                            <SelectItem value="2">Week 2</SelectItem>
+                            <SelectItem value="3">Week 3</SelectItem>
+                            <SelectItem value="4">Week 4</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                    ))}
+                    )}
+
+                    {filterForm.filter_type === 'day' && (
+                      <div>
+                        <Label htmlFor="day" className="text-white">Day</Label>
+                        <Input
+                          id="day"
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={filterForm.day}
+                          onChange={(e) => setFilterForm(prev => ({ ...prev, day: parseInt(e.target.value) }))}
+                          className="auth-input"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-end">
+                      <Button 
+                        onClick={fetchFilteredTransactions}
+                        disabled={loading}
+                        className="bg-emerald-600 hover:bg-emerald-700 w-full"
+                      >
+                        <Search className="w-4 h-4 mr-2" />
+                        {loading ? 'Loading...' : 'Filter'}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            )}
-          </div>
-        )}
+
+              {/* Transactions List */}
+              <Card className="dashboard-card">
+                <CardHeader>
+                  <CardTitle className="text-white">
+                    Transactions {filteredTransactions.length > 0 && `(${filteredTransactions.length} found)`}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {filteredTransactions.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-gray-400 mb-4">No transactions found</div>
+                      <Button 
+                        onClick={fetchFilteredTransactions}
+                        variant="outline"
+                        className="text-white border-gray-600 hover:bg-gray-800"
+                      >
+                        Load Transactions
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {filteredTransactions.map((transaction) => {
+                        const category = categories.find(c => c.id === transaction.category_id);
+                        return (
+                          <div key={transaction.id} className="bg-white/5 p-4 rounded-lg flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                              <div className={`p-2 rounded-lg ${
+                                transaction.transaction_type === 'income' ? 'bg-green-500/20' : 'bg-red-500/20'
+                              }`}>
+                                {transaction.transaction_type === 'income' ? 
+                                  <TrendingUp className="w-4 h-4 text-green-400" /> : 
+                                  <TrendingDown className="w-4 h-4 text-red-400" />
+                                }
+                              </div>
+                              <div>
+                                <div className="text-white font-semibold">
+                                  {formatCurrency(transaction.amount)}
+                                </div>
+                                <div className="text-gray-400 text-sm">
+                                  {transaction.description || category?.name || 'No description'}
+                                </div>
+                                <div className="text-gray-500 text-xs">
+                                  {new Date(transaction.date).toLocaleDateString()} • {transaction.payment_mode}
+                                </div>
+                              </div>
+                              {category && (
+                                <Badge className={getCategoryTypeColor(category.type)}>
+                                  {category.type}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEditTransaction(transaction)}
+                                className="text-white border-gray-600 hover:bg-gray-800"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteTransaction(transaction.id)}
+                                className="text-red-400 border-red-600 hover:bg-red-900/20"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* Add Transaction Modal */}
+      {/* Add/Edit Transaction Modal */}
       <Dialog open={showAddTransaction} onOpenChange={setShowAddTransaction}>
         <DialogContent className="modal-content max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-white">Add New Entry</DialogTitle>
+            <DialogTitle className="text-white">
+              {editingTransaction ? 'Edit Entry' : 'Add New Entry'}
+            </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Record your income or expense
+              {editingTransaction ? 'Update your transaction details' : 'Record your income or expense'}
             </DialogDescription>
           </DialogHeader>
           
@@ -767,7 +1186,20 @@ const BudgetTracker = () => {
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => setShowAddTransaction(false)}
+                onClick={() => {
+                  setShowAddTransaction(false);
+                  setEditingTransaction(null);
+                  setTransactionForm({
+                    amount: '',
+                    transaction_type: 'expense',
+                    category_id: '',
+                    person_name: '',
+                    payment_mode: 'online',
+                    bank_app: '',
+                    description: '',
+                    date: new Date().toISOString().split('T')[0]
+                  });
+                }}
                 className="border-gray-600 text-gray-300 hover:bg-gray-800"
               >
                 Cancel
@@ -777,10 +1209,213 @@ const BudgetTracker = () => {
                 disabled={loading}
                 className="bg-emerald-600 hover:bg-emerald-700"
               >
-                {loading ? 'Adding...' : 'Add Entry'}
+                <Save className="w-4 h-4 mr-2" />
+                {loading ? 'Saving...' : (editingTransaction ? 'Update Entry' : 'Add Entry')}
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Profile Settings Modal */}
+      <Dialog open={showProfileSettings} onOpenChange={setShowProfileSettings}>
+        <DialogContent className="modal-content max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">Profile Settings</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Update your profile information and change password
+            </DialogDescription>
+          </DialogHeader>
+
+          <Tabs defaultValue="profile" className="space-y-6">
+            <TabsList className="glass-tabs">
+              <TabsTrigger value="profile" className="tab-trigger">
+                <User className="w-4 h-4 mr-2" />
+                Edit Profile
+              </TabsTrigger>
+              <TabsTrigger value="password" className="tab-trigger">
+                <Settings className="w-4 h-4 mr-2" />
+                Change Password
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="profile">
+              <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="settings_first_name" className="text-white">First Name *</Label>
+                    <Input
+                      id="settings_first_name"
+                      value={profileSettingsForm.first_name}
+                      onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, first_name: e.target.value }))}
+                      className="auth-input"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="settings_last_name" className="text-white">Last Name *</Label>
+                    <Input
+                      id="settings_last_name"
+                      value={profileSettingsForm.last_name}
+                      onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, last_name: e.target.value }))}
+                      className="auth-input"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="settings_email" className="text-white">Email *</Label>
+                  <Input
+                    id="settings_email"
+                    type="email"
+                    value={profileSettingsForm.email}
+                    onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, email: e.target.value }))}
+                    className="auth-input"
+                    required
+                  />
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="settings_country" className="text-white">Country *</Label>
+                    <Input
+                      id="settings_country"
+                      value={profileSettingsForm.country}
+                      onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, country: e.target.value }))}
+                      className="auth-input"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="settings_currency" className="text-white">Currency</Label>
+                    <Select 
+                      value={profileSettingsForm.currency} 
+                      onValueChange={(value) => setProfileSettingsForm(prev => ({ ...prev, currency: value }))}
+                    >
+                      <SelectTrigger className="auth-input">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="INR">INR</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="GBP">GBP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="settings_bank_account" className="text-white">Bank Account</Label>
+                  <Input
+                    id="settings_bank_account"
+                    value={profileSettingsForm.bank_account}
+                    onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, bank_account: e.target.value }))}
+                    className="auth-input"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="settings_address" className="text-white">Address</Label>
+                  <Input
+                    id="settings_address"
+                    value={profileSettingsForm.address}
+                    onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, address: e.target.value }))}
+                    className="auth-input"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="settings_monthly_income" className="text-white">Monthly Income ({profileSettingsForm.currency})</Label>
+                  <Input
+                    id="settings_monthly_income"
+                    type="number"
+                    value={profileSettingsForm.monthly_income}
+                    onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, monthly_income: e.target.value }))}
+                    className="auth-input"
+                    placeholder="For CFR calculations"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="settings_account_type" className="text-white">Account Type</Label>
+                  <Select 
+                    value={profileSettingsForm.account_type} 
+                    onValueChange={(value) => setProfileSettingsForm(prev => ({ ...prev, account_type: value }))}
+                  >
+                    <SelectTrigger className="auth-input">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="individual">Individual</SelectItem>
+                      <SelectItem value="family">Family</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {loading ? 'Saving...' : 'Save Profile'}
+                </Button>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="password">
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div>
+                  <Label htmlFor="current_password" className="text-white">Current Password</Label>
+                  <Input
+                    id="current_password"
+                    type="password"
+                    value={passwordForm.current_password}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
+                    className="auth-input"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="new_password" className="text-white">New Password</Label>
+                  <Input
+                    id="new_password"
+                    type="password"
+                    value={passwordForm.new_password}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
+                    className="auth-input"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="confirm_password" className="text-white">Confirm New Password</Label>
+                  <Input
+                    id="confirm_password"
+                    type="password"
+                    value={passwordForm.confirm_password}
+                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
+                    className="auth-input"
+                    required
+                  />
+                </div>
+
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {loading ? 'Changing...' : 'Change Password'}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>
