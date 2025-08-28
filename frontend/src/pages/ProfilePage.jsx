@@ -120,6 +120,24 @@ const ProfilePage = () => {
       const response = await axios.put(`${API}/profile`, profileData);
       setProfile(response.data);
       
+      // Create new family member accounts
+      const createdMembers = [];
+      for (const member of newFamilyMembers) {
+        try {
+          const memberResponse = await axios.post(`${API}/family-members`, member);
+          createdMembers.push(memberResponse.data);
+          toast.success(`Family member ${member.first_name} ${member.last_name} added successfully!`);
+        } catch (error) {
+          toast.error(`Failed to add ${member.first_name} ${member.last_name}: ${error.response?.data?.detail || 'Unknown error'}`);
+        }
+      }
+      
+      // Clear new family members after successful creation
+      setNewFamilyMembers([]);
+      
+      // Refresh family members list
+      await fetchFamilyMembers();
+      
       toast.success('Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -128,34 +146,23 @@ const ProfilePage = () => {
     setLoading(false);
   };
 
-  const handleAddFamilyMember = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const response = await axios.post(`${API}/family-members`, familyMemberForm);
-      
-      // Show success message with credentials
-      const credentials = response.data.credentials;
-      toast.success(
-        `Family member added successfully! Email: ${credentials.email}, Password: ${credentials.default_password}`
-      );
-      
-      // Reset form and close modal
-      setFamilyMemberForm({
-        email: '',
-        first_name: '',
-        last_name: '',
-        relation: 'spouse'
-      });
-      setShowAddFamilyMember(false);
-      
-      // Refresh family members list
-      await fetchFamilyMembers();
-    } catch (error) {
-      console.error('Error adding family member:', error);
-      toast.error(error.response?.data?.detail || 'Failed to add family member');
-    }
-    setLoading(false);
+  const addNewFamilyMember = () => {
+    setNewFamilyMembers(prev => [...prev, {
+      email: '',
+      first_name: '',
+      last_name: '',
+      relation: 'spouse'
+    }]);
+  };
+
+  const updateNewFamilyMember = (index, field, value) => {
+    setNewFamilyMembers(prev => prev.map((member, i) => 
+      i === index ? { ...member, [field]: value } : member
+    ));
+  };
+
+  const removeNewFamilyMember = (index) => {
+    setNewFamilyMembers(prev => prev.filter((_, i) => i !== index));
   };
 
   const handlePasswordChange = async (e) => {
