@@ -101,3 +101,123 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+## user_problem_statement: 
+Convert "Edit Profile" from a modal/dropdown option to a full, scrollable page. Implement family member management system with the ability to add family members when "Family Mode" is selected, auto-create accounts with default credentials, ensure family members are selectable in "Person" dropdown, develop first-time login flow for family members, implement shared data access, and restrict family members from changing to "Individual" mode.
+
+## backend:
+  - task: "Extend User and Profile models for family member support"
+    implemented: false
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+        - agent: "main"
+        - comment: "Need to add family member fields to user model and create family member endpoints"
+
+  - task: "Create family member management endpoints"
+    implemented: false
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+        - agent: "main"
+        - comment: "Need endpoints for adding, listing, and managing family members"
+
+  - task: "Implement first-time login flow for family members"
+    implemented: false
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+        - agent: "main"
+        - comment: "Need to handle password change flow and profile completion for new family members"
+
+  - task: "Update transaction endpoints for shared family access"
+    implemented: false
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: false
+        - agent: "main"
+        - comment: "Need to allow all family members to view and edit shared transactions"
+
+## frontend:
+  - task: "Convert Edit Profile to dedicated page"
+    implemented: false
+    working: false
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+        - agent: "main"
+        - comment: "Need to create new route and page component for profile editing"
+
+  - task: "Implement family member management UI"
+    implemented: false
+    working: false
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+        - agent: "main"
+        - comment: "Need UI for adding and managing family members in profile page"
+
+  - task: "Update Person dropdown in Add Entry"
+    implemented: false
+    working: false
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: false
+        - agent: "main"
+        - comment: "Need to populate dropdown with family members from API"
+
+  - task: "Implement family member first-time login flow"
+    implemented: false
+    working: false
+    file: "/app/frontend/src/App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: false
+        - agent: "main"
+        - comment: "Need password change modal and profile redirect for new family members"
+
+## metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 0
+  run_ui: false
+
+## test_plan:
+  current_focus:
+    - "Extend User and Profile models for family member support"
+    - "Create family member management endpoints"
+    - "Convert Edit Profile to dedicated page"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+## agent_communication:
+    - agent: "main"
+    - message: "Starting implementation of family member management system. Will begin with backend model extensions and endpoint creation."
