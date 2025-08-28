@@ -247,8 +247,9 @@ Convert "Edit Profile" from a modal/dropdown option to a full, scrollable page. 
 
 ## test_plan:
   current_focus:
-    - "Convert Edit Profile to dedicated page"
-    - "Implement family member management UI"
+    - "All backend family management features implemented and tested"
+    - "All frontend features implemented including dedicated profile page, family management UI, person dropdown, and first-time login flow"
+    - "Ready for comprehensive frontend testing"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
