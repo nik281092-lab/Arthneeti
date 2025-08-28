@@ -180,52 +180,64 @@ Convert "Edit Profile" from a modal/dropdown option to a full, scrollable page. 
 
 ## frontend:
   - task: "Convert Edit Profile to dedicated page"
-    implemented: false
-    working: false
-    file: "/app/frontend/src/App.js"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ProfilePage.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: false
         - agent: "main"
         - comment: "Need to create new route and page component for profile editing"
+        - working: true
+        - agent: "main"
+        - comment: "Created dedicated ProfilePage.jsx component with full scrollable interface and routing. Updated App.js to use React Router with proper navigation structure."
 
   - task: "Implement family member management UI"
-    implemented: false
-    working: false
-    file: "/app/frontend/src/App.js"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/ProfilePage.jsx"
     stuck_count: 0
     priority: "high"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: false
         - agent: "main"
         - comment: "Need UI for adding and managing family members in profile page"
+        - working: true
+        - agent: "main"
+        - comment: "Integrated family member management into ProfilePage with add member modal, family member list display, and proper access control for master/family member roles."
 
   - task: "Update Person dropdown in Add Entry"
-    implemented: false
-    working: false
-    file: "/app/frontend/src/App.js"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/pages/DashboardPage.jsx"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: false
         - agent: "main"
         - comment: "Need to populate dropdown with family members from API"
+        - working: true
+        - agent: "main"
+        - comment: "Updated transaction form in DashboardPage to fetch and display family members in Person dropdown with select/manual entry option."
 
   - task: "Implement family member first-time login flow"
-    implemented: false
-    working: false
-    file: "/app/frontend/src/App.js"
+    implemented: true
+    working: true
+    file: "/app/frontend/src/components/FirstTimeLoginModal.jsx"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: false
+    needs_retesting: true
     status_history:
         - working: false
         - agent: "main"
         - comment: "Need password change modal and profile redirect for new family members"
+        - working: true
+        - agent: "main"
+        - comment: "Created FirstTimeLoginModal component that detects must_change_password flag and forces password change before allowing access to the application."
 
 ## metadata:
   created_by: "main_agent"
