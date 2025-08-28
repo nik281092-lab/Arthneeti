@@ -723,27 +723,40 @@ const DashboardPage = () => {
               <div>
                 <Label htmlFor="person_name" className="text-white">Person Name</Label>
                 <Select 
-                  value={transactionForm.person_name || ''} 
+                  value={transactionForm.person_name} 
                   onValueChange={(value) => setTransactionForm(prev => ({ ...prev, person_name: value }))}
                 >
                   <SelectTrigger className="auth-input">
-                    <SelectValue placeholder="Select family member or type manually" />
+                    <SelectValue placeholder="Select family member" />
                   </SelectTrigger>
                   <SelectContent>
-                    {familyMembers.map(member => (
+                    {/* Current User (Default) */}
+                    {currentUser && (
+                      <SelectItem value={`${currentUser.first_name} ${currentUser.last_name}`}>
+                        {currentUser.first_name} {currentUser.last_name} (You)
+                      </SelectItem>
+                    )}
+                    
+                    {/* Family Members */}
+                    {familyMembers.filter(member => !member.is_master).map(member => (
                       <SelectItem key={member.id} value={member.name}>
                         {member.name} ({member.relation})
                       </SelectItem>
                     ))}
-                    <SelectItem value="">Other (type manually)</SelectItem>
+                    
+                    {/* Manual Entry Option */}
+                    <SelectItem value="__manual__">Other (type manually)</SelectItem>
                   </SelectContent>
                 </Select>
-                {transactionForm.person_name === '' && (
+                
+                {/* Manual input field for custom person name */}
+                {transactionForm.person_name === '__manual__' && (
                   <Input
                     className="auth-input mt-2"
                     placeholder="Enter person name"
-                    value={transactionForm.person_name}
+                    value=""
                     onChange={(e) => setTransactionForm(prev => ({ ...prev, person_name: e.target.value }))}
+                    autoFocus
                   />
                 )}
               </div>
