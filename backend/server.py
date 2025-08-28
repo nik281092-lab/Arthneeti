@@ -833,15 +833,15 @@ async def delete_transaction(transaction_id: str, current_user: User = Depends(g
 # Dashboard Routes
 @api_router.get("/dashboard")
 async def get_dashboard_summary(current_user: User = Depends(get_current_user), month: Optional[str] = None):
-    profile = await db.profiles.find_one({"user_id": current_user.id})
-    if not profile:
+    master_profile = await get_master_profile(current_user)
+    if not master_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     
     if not month:
         month = datetime.now(timezone.utc).strftime("%Y-%m")
     
-    # Get transactions for the month
-    transactions = await db.transactions.find({"profile_id": profile["id"]}).to_list(length=None)
+    # Get transactions for the family
+    transactions = await db.transactions.find({"profile_id": master_profile.id}).to_list(length=None)
     
     # Filter transactions for the current month
     month_transactions = []
@@ -860,7 +860,7 @@ async def get_dashboard_summary(current_user: User = Depends(get_current_user), 
     total_expenses = sum(t["amount"] for t in month_transactions if t["transaction_type"] == TransactionType.EXPENSE)
     
     # Calculate CFR analysis based on income percentages
-    monthly_income = profile.get("monthly_income") or total_income or 10000  # Default fallback
+    monthly_income = master_profile.monthly_income or total_income or 10000  # Default fallback
     
     # Ensure monthly_income is not None or 0
     if not monthly_income or monthly_income <= 0:
@@ -927,7 +927,7 @@ async def get_dashboard_summary(current_user: User = Depends(get_current_user), 
         ))
     
     return {
-        "profile": Profile(**profile).dict(),
+        "profile": master_profile.dict(),
         "month": month,
         "total_income": total_income,
         "total_expenses": total_expenses,
