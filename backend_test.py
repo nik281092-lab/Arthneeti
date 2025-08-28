@@ -772,17 +772,32 @@ def main():
     
     tester = BudgetTrackerAPITester()
     
-    # Test sequence - Focus on reported bug fixes
+    # Test sequence - Focus on family member management functionality
     tests = [
         ("Signup", tester.test_signup),
         ("Get Current User", tester.test_get_current_user),
-        ("Create Profile", tester.test_create_profile),
+        ("Enhanced Login Response", tester.test_enhanced_login_response),
+        ("Create Profile (Family Mode)", tester.test_create_profile),
         ("Get Profile", tester.test_get_profile),
         ("Get Categories (CRITICAL)", tester.test_get_categories),
+        
+        # Family Member Management Tests
+        ("🔥 Add Family Member", tester.test_add_family_member),
+        ("🔥 Family Member First Login", tester.test_family_member_first_login),
+        ("🔥 Family Member Password Change", tester.test_family_member_password_change),
+        ("🔥 Get Family Members", tester.test_get_family_members),
+        ("🔥 Get Family Status", tester.test_get_family_status),
+        ("🔥 Family Member Profile Restriction", tester.test_family_member_profile_restriction),
+        ("🔥 Access Control - Family Members", tester.test_access_control_family_members),
+        
+        # Transaction and Dashboard Sharing Tests
         ("Create Transaction", tester.test_create_transaction),
         ("Get Transactions", tester.test_get_transactions),
+        ("🔥 Shared Transaction Access", tester.test_shared_transaction_access),
+        ("🔥 Family Dashboard Sharing", tester.test_family_dashboard_sharing),
         ("Dashboard Data", tester.test_dashboard),
-        # CRITICAL TESTS FOR REPORTED BUGS
+        
+        # Original filtering tests
         ("🔥 Filtered Transactions (Month)", tester.test_filtered_transactions_month),
         ("🔥 Filtered Transactions (Week)", tester.test_filtered_transactions_week),
         ("🔥 Filtered Transactions (Day)", tester.test_filtered_transactions_day),
