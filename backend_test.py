@@ -378,6 +378,394 @@ class BudgetTrackerAPITester:
         )
         return success
 
+    # ===== FAMILY MEMBER MANAGEMENT TESTS =====
+    
+    def test_enhanced_login_response(self):
+        """Test that login response includes family member fields"""
+        # First create a test user to login with
+        timestamp = datetime.now().strftime('%H%M%S')
+        signup_data = {
+            "email": f"login_test_{timestamp}@example.com",
+            "password": "TestPass123!",
+            "first_name": "Login",
+            "last_name": "Test"
+        }
+        
+        # Signup first
+        success, response = self.run_test(
+            "Signup for Login Test",
+            "POST",
+            "signup",
+            200,
+            data=signup_data
+        )
+        
+        if not success:
+            return False
+            
+        # Now test login response
+        login_data = {
+            "email": signup_data["email"],
+            "password": signup_data["password"]
+        }
+        
+        success, response = self.run_test(
+            "Enhanced Login Response",
+            "POST",
+            "login",
+            200,
+            data=login_data
+        )
+        
+        if success:
+            user_data = response.get('user', {})
+            expected_fields = ['is_family_member', 'must_change_password', 'family_relation']
+            missing_fields = [field for field in expected_fields if field not in user_data]
+            
+            if missing_fields:
+                print(f"   ❌ Missing fields in login response: {missing_fields}")
+                return False
+            else:
+                print(f"   ✅ All family fields present: is_family_member={user_data['is_family_member']}, must_change_password={user_data['must_change_password']}")
+                return True
+        return False
+
+    def test_add_family_member(self):
+        """Test adding a family member"""
+        if not self.token:
+            print("   ⚠️  No authentication token, skipping family member test")
+            return False
+            
+        timestamp = datetime.now().strftime('%H%M%S')
+        self.family_member_email = f"family_member_{timestamp}@example.com"
+        
+        family_member_data = {
+            "email": self.family_member_email,
+            "first_name": "Family",
+            "last_name": "Member",
+            "relation": "spouse"
+        }
+        
+        success, response = self.run_test(
+            "Add Family Member",
+            "POST",
+            "family-members",
+            200,
+            data=family_member_data
+        )
+        
+        if success:
+            if 'credentials' in response:
+                credentials = response['credentials']
+                print(f"   ✅ Family member created with default password: {credentials.get('default_password')}")
+                print(f"   Must change password: {credentials.get('must_change_password')}")
+                return True
+            else:
+                print("   ❌ Missing credentials in response")
+                return False
+        return False
+
+    def test_family_member_first_login(self):
+        """Test family member first-time login flow"""
+        if not self.family_member_email:
+            print("   ⚠️  No family member email, skipping first login test")
+            return False
+            
+        login_data = {
+            "email": self.family_member_email,
+            "password": "Artheeti1"  # Default password
+        }
+        
+        success, response = self.run_test(
+            "Family Member First Login",
+            "POST",
+            "login",
+            200,
+            data=login_data
+        )
+        
+        if success:
+            user_data = response.get('user', {})
+            if user_data.get('must_change_password') == True and user_data.get('is_family_member') == True:
+                print(f"   ✅ Family member login successful with must_change_password=True")
+                self.family_member_token = response['access_token']
+                self.family_member_id = user_data['id']
+                return True
+            else:
+                print(f"   ❌ Unexpected login response: must_change_password={user_data.get('must_change_password')}, is_family_member={user_data.get('is_family_member')}")
+                return False
+        return False
+
+    def test_family_member_password_change(self):
+        """Test family member password change"""
+        if not self.family_member_token:
+            print("   ⚠️  No family member token, skipping password change test")
+            return False
+            
+        # Temporarily switch to family member token
+        original_token = self.token
+        self.token = self.family_member_token
+        
+        password_data = {
+            "current_password": "Artheeti1",
+            "new_password": "NewFamilyPass123!"
+        }
+        
+        success, response = self.run_test(
+            "Family Member Password Change",
+            "POST",
+            "change-password",
+            200,
+            data=password_data
+        )
+        
+        # Restore original token
+        self.token = original_token
+        
+        if success:
+            print("   ✅ Family member password changed successfully")
+            return True
+        return False
+
+    def test_get_family_members(self):
+        """Test getting family members list"""
+        success, response = self.run_test(
+            "Get Family Members",
+            "GET",
+            "family-members",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   Found {len(response)} family members")
+            for member in response:
+                print(f"     - {member.get('name')} ({member.get('relation')}) - Master: {member.get('is_master', False)}")
+            return True
+        return False
+
+    def test_get_family_status(self):
+        """Test getting family status"""
+        success, response = self.run_test(
+            "Get Family Status",
+            "GET",
+            "profile/family-status",
+            200
+        )
+        
+        if success:
+            expected_fields = ['is_family_member', 'is_master', 'can_add_family_members', 'can_change_to_individual']
+            missing_fields = [field for field in expected_fields if field not in response]
+            
+            if missing_fields:
+                print(f"   ❌ Missing fields in family status: {missing_fields}")
+                return False
+            else:
+                print(f"   ✅ Family status: is_master={response['is_master']}, can_add_family_members={response['can_add_family_members']}")
+                return True
+        return False
+
+    def test_family_member_profile_restriction(self):
+        """Test that family members cannot change to individual mode"""
+        if not self.family_member_token:
+            print("   ⚠️  No family member token, skipping profile restriction test")
+            return False
+            
+        # Temporarily switch to family member token
+        original_token = self.token
+        self.token = self.family_member_token
+        
+        # Try to create/update profile with individual mode
+        profile_data = {
+            "first_name": "Family",
+            "last_name": "Member",
+            "currency": "USD",
+            "country": "USA",
+            "account_type": "individual",  # This should be rejected
+            "monthly_income": 3000.0
+        }
+        
+        success, response = self.run_test(
+            "Family Member Profile Restriction",
+            "PUT",
+            "profile",
+            403,  # Should be forbidden
+            data=profile_data
+        )
+        
+        # Restore original token
+        self.token = original_token
+        
+        if success:
+            print("   ✅ Family member correctly restricted from changing to individual mode")
+            return True
+        return False
+
+    def test_shared_transaction_access(self):
+        """Test that family members can access shared transactions"""
+        if not self.family_member_token:
+            print("   ⚠️  No family member token, skipping shared transaction test")
+            return False
+            
+        # First create a transaction as master user
+        if not self.category_id:
+            print("   ⚠️  No category ID available, skipping shared transaction test")
+            return False
+            
+        transaction_data = {
+            "amount": 250.75,
+            "transaction_type": "expense",
+            "category_id": self.category_id,
+            "person_name": "Master User",
+            "payment_mode": "credit_card",
+            "description": "Master transaction for family sharing",
+            "date": datetime.now().strftime('%Y-%m-%d')
+        }
+        
+        success, response = self.run_test(
+            "Create Master Transaction",
+            "POST",
+            "transactions",
+            200,
+            data=transaction_data
+        )
+        
+        if not success:
+            return False
+            
+        master_transaction_id = response.get('id')
+        
+        # Now switch to family member and try to access transactions
+        original_token = self.token
+        self.token = self.family_member_token
+        
+        success, response = self.run_test(
+            "Family Member Access Shared Transactions",
+            "GET",
+            "transactions",
+            200
+        )
+        
+        if success and isinstance(response, list):
+            # Check if family member can see the master's transaction
+            master_transaction_found = any(t.get('id') == master_transaction_id for t in response)
+            if master_transaction_found:
+                print("   ✅ Family member can access master's transactions")
+                
+                # Test family member creating a transaction
+                family_transaction_data = {
+                    "amount": 75.50,
+                    "transaction_type": "expense",
+                    "category_id": self.category_id,
+                    "person_name": "Family Member",
+                    "payment_mode": "debit_card",
+                    "description": "Family member transaction",
+                    "date": datetime.now().strftime('%Y-%m-%d')
+                }
+                
+                success2, response2 = self.run_test(
+                    "Family Member Create Transaction",
+                    "POST",
+                    "transactions",
+                    200,
+                    data=family_transaction_data
+                )
+                
+                # Restore original token
+                self.token = original_token
+                
+                if success2:
+                    print("   ✅ Family member can create shared transactions")
+                    return True
+                else:
+                    return False
+            else:
+                print("   ❌ Family member cannot see master's transactions")
+                self.token = original_token
+                return False
+        else:
+            self.token = original_token
+            return False
+
+    def test_family_dashboard_sharing(self):
+        """Test that family members see shared dashboard data"""
+        if not self.family_member_token:
+            print("   ⚠️  No family member token, skipping family dashboard test")
+            return False
+            
+        # Get dashboard as master user first
+        success1, master_dashboard = self.run_test(
+            "Master Dashboard",
+            "GET",
+            "dashboard",
+            200
+        )
+        
+        if not success1:
+            return False
+            
+        # Now get dashboard as family member
+        original_token = self.token
+        self.token = self.family_member_token
+        
+        success2, family_dashboard = self.run_test(
+            "Family Member Dashboard",
+            "GET",
+            "dashboard",
+            200
+        )
+        
+        # Restore original token
+        self.token = original_token
+        
+        if success2:
+            # Compare key metrics - they should be the same for shared family data
+            master_income = master_dashboard.get('total_income', 0)
+            family_income = family_dashboard.get('total_income', 0)
+            master_expenses = master_dashboard.get('total_expenses', 0)
+            family_expenses = family_dashboard.get('total_expenses', 0)
+            
+            if master_income == family_income and master_expenses == family_expenses:
+                print(f"   ✅ Family dashboard shows shared data: Income={family_income}, Expenses={family_expenses}")
+                return True
+            else:
+                print(f"   ❌ Dashboard data mismatch: Master({master_income}, {master_expenses}) vs Family({family_income}, {family_expenses})")
+                return False
+        return False
+
+    def test_access_control_family_members(self):
+        """Test that only master users can add family members"""
+        if not self.family_member_token:
+            print("   ⚠️  No family member token, skipping access control test")
+            return False
+            
+        # Try to add family member as a family member (should fail)
+        original_token = self.token
+        self.token = self.family_member_token
+        
+        timestamp = datetime.now().strftime('%H%M%S')
+        family_member_data = {
+            "email": f"unauthorized_member_{timestamp}@example.com",
+            "first_name": "Unauthorized",
+            "last_name": "Member",
+            "relation": "child"
+        }
+        
+        success, response = self.run_test(
+            "Family Member Tries to Add Member (Should Fail)",
+            "POST",
+            "family-members",
+            403,  # Should be forbidden
+            data=family_member_data
+        )
+        
+        # Restore original token
+        self.token = original_token
+        
+        if success:
+            print("   ✅ Access control working: Family members cannot add other family members")
+            return True
+        return False
+
 def main():
     print("🚀 Starting Budget Tracker API Tests")
     print("=" * 50)
