@@ -121,20 +121,20 @@ class BudgetTrackerAPITester:
         return success
 
     def test_create_profile(self):
-        """Test profile creation"""
+        """Test profile creation with family mode"""
         profile_data = {
-            "first_name": "Test",
+            "first_name": "Master",
             "last_name": "User",
             "currency": "USD",
             "bank_account": "1234567890",
             "address": "123 Test Street",
             "country": "USA",
-            "account_type": "individual",
+            "account_type": "family",  # Changed to family for testing
             "monthly_income": 5000.0
         }
         
         success, response = self.run_test(
-            "Create Profile",
+            "Create Profile (Family Mode)",
             "POST",
             "profile",
             200,
@@ -143,6 +143,7 @@ class BudgetTrackerAPITester:
         
         if success and 'id' in response:
             self.profile_id = response['id']
+            print(f"   Profile created with account_type: {response.get('account_type')}")
             return True
         return False
 
