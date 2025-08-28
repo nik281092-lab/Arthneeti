@@ -250,16 +250,20 @@ const ProfileSetupPage = () => {
               
               <div>
                 <Label htmlFor="currency" className="text-white">Currency</Label>
-                <select 
+                <Select 
                   value={profileForm.currency} 
-                  onChange={(e) => setProfileForm(prev => ({ ...prev, currency: e.target.value }))}
-                  className="auth-input"
+                  onValueChange={(value) => setProfileForm(prev => ({ ...prev, currency: value }))}
                 >
-                  <option value="INR">INR</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="GBP">GBP</option>
-                </select>
+                  <SelectTrigger className="auth-input">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INR">INR</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="GBP">GBP</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
