@@ -643,12 +643,12 @@ async def get_my_transactions(current_user: User = Depends(get_current_user)):
 @api_router.get("/transactions/available-filters")
 async def get_available_filters(current_user: User = Depends(get_current_user)):
     """Get available years, months, and days that have transactions"""
-    profile = await db.profiles.find_one({"user_id": current_user.id})
-    if not profile:
+    master_profile = await get_master_profile(current_user)
+    if not master_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     
-    # Get all transactions for the user
-    transactions = await db.transactions.find({"profile_id": profile["id"]}).to_list(length=None)
+    # Get all transactions for the family
+    transactions = await db.transactions.find({"profile_id": master_profile.id}).to_list(length=None)
     
     available_years = set()
     available_months = {}  # year -> [months]
