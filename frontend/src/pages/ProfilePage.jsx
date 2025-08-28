@@ -97,7 +97,26 @@ const ProfilePage = () => {
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     setLoading(true);
+    
     try {
+      // Validate new family members
+      for (const member of newFamilyMembers) {
+        if (!member.email || !member.first_name || !member.last_name) {
+          toast.error('Please fill in all family member details');
+          setLoading(false);
+          return;
+        }
+        
+        // Check for duplicate emails
+        const isDuplicate = familyMembers.some(existing => existing.email === member.email) ||
+                           newFamilyMembers.filter(m => m.email === member.email).length > 1;
+        if (isDuplicate) {
+          toast.error(`Email ${member.email} is already used`);
+          setLoading(false);
+          return;
+        }
+      }
+
       // Update user info
       await axios.put(`${API}/me`, {
         first_name: profileForm.first_name,
@@ -138,7 +157,7 @@ const ProfilePage = () => {
       // Refresh family members list
       await fetchFamilyMembers();
       
-      toast.success('Profile updated successfully!');
+      toast.success('Profile and family members updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
       toast.error(error.response?.data?.detail || 'Failed to update profile');
