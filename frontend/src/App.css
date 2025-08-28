@@ -70,6 +70,16 @@ body {
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 16px;
+  z-index: 50;
+}
+
+/* Fix for Select dropdown in modals */
+[data-radix-popper-content-wrapper] {
+  z-index: 9999 !important;
+}
+
+.modal-content [data-state="open"] {
+  z-index: 9999 !important;
 }
 
 /* CFR Bar Chart */
