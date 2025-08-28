@@ -93,6 +93,10 @@ class User(BaseModel):
     last_name: str
     hashed_password: str
     is_active: bool = True
+    is_family_member: bool = False
+    master_user_id: Optional[str] = None
+    family_relation: Optional[FamilyRelation] = None
+    must_change_password: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class UserUpdate(BaseModel):
