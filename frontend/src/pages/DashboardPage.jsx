@@ -170,11 +170,13 @@ const DashboardPage = () => {
         toast.success('Transaction added successfully!');
       }
       
+      // Reset form with default person name
+      const defaultPersonName = currentUser ? `${currentUser.first_name} ${currentUser.last_name}` : '';
       setTransactionForm({
         amount: '',
         transaction_type: 'expense',
         category_id: '',
-        person_name: '',
+        person_name: defaultPersonName,
         payment_mode: 'online',
         bank_app: '',
         description: '',
