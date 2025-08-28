@@ -4,7 +4,8 @@ import axios from "axios";
 import { 
   Calendar, User, DollarSign, TrendingUp, TrendingDown, Plus, Settings, 
   Home as HomeIcon, LogOut, Eye, EyeOff, PieChart, BarChart3, ArrowRight,
-  Save, Edit3, Trash2, Filter, Search, ChevronLeft, ChevronRight, List
+  Save, Edit3, Trash2, Filter, Search, ChevronLeft, ChevronRight, List,
+  ChevronDown, Lock, Edit
 } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./components/ui/card";
@@ -14,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Badge } from "./components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./components/ui/dropdown-menu";
 import { toast } from "sonner";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -27,9 +29,12 @@ const BudgetTracker = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(false);
-  const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [allTransactions, setAllTransactions] = useState([]);
   const [filteredTransactions, setFilteredTransactions] = useState([]);
+  const [availableFilters, setAvailableFilters] = useState({});
+  const [hasTransactions, setHasTransactions] = useState(false);
 
   // Auth forms
   const [authMode, setAuthMode] = useState('login'); // 'login' or 'signup'
@@ -126,6 +131,7 @@ const BudgetTracker = () => {
         });
         await fetchDashboardData();
         await fetchAllTransactions();
+        await fetchAvailableFilters();
         setCurrentView('dashboard');
       } catch (error) {
         if (error.response?.status === 404) {
@@ -161,8 +167,19 @@ const BudgetTracker = () => {
     try {
       const response = await axios.get(`${API}/transactions`);
       setAllTransactions(response.data);
+      setHasTransactions(response.data.length > 0);
     } catch (error) {
       console.error('Error fetching transactions:', error);
+    }
+  };
+
+  const fetchAvailableFilters = async () => {
+    try {
+      const response = await axios.get(`${API}/transactions/available-filters`);
+      setAvailableFilters(response.data);
+      setHasTransactions(response.data.has_transactions);
+    } catch (error) {
+      console.error('Error fetching available filters:', error);
     }
   };
 
@@ -233,6 +250,7 @@ const BudgetTracker = () => {
       const response = await axios.post(`${API}/profile`, profileData);
       setProfile(response.data);
       await fetchDashboardData();
+      await fetchAvailableFilters();
       setCurrentView('dashboard');
       toast.success('Profile created successfully!');
     } catch (error) {
@@ -277,7 +295,7 @@ const BudgetTracker = () => {
       }));
       
       await fetchDashboardData();
-      setShowProfileSettings(false);
+      setShowEditProfile(false);
       toast.success('Profile updated successfully!');
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -307,6 +325,7 @@ const BudgetTracker = () => {
         confirm_password: ''
       });
       
+      setShowChangePassword(false);
       toast.success('Password changed successfully!');
     } catch (error) {
       console.error('Error changing password:', error);
@@ -346,6 +365,7 @@ const BudgetTracker = () => {
       
       await fetchDashboardData();
       await fetchAllTransactions();
+      await fetchAvailableFilters();
       setShowAddTransaction(false);
     } catch (error) {
       console.error('Error with transaction:', error);
@@ -364,7 +384,7 @@ const BudgetTracker = () => {
       payment_mode: transaction.payment_mode,
       bank_app: transaction.bank_app || '',
       description: transaction.description || '',
-      date: transaction.date
+      date: transaction.date.split('T')[0]
     });
     setShowAddTransaction(true);
   };
@@ -375,6 +395,7 @@ const BudgetTracker = () => {
         await axios.delete(`${API}/transactions/${transactionId}`);
         await fetchDashboardData();
         await fetchAllTransactions();
+        await fetchAvailableFilters();
         toast.success('Transaction deleted successfully!');
       } catch (error) {
         console.error('Error deleting transaction:', error);
@@ -389,6 +410,7 @@ const BudgetTracker = () => {
     setUser(null);
     setProfile(null);
     setDashboardData(null);
+    setHasTransactions(false);
     setCurrentView('landing');
     toast.success('Logged out successfully');
   };
@@ -413,6 +435,18 @@ const BudgetTracker = () => {
 
   const formatCurrency = (amount) => {
     return `${profile?.currency || 'INR'} ${amount.toLocaleString()}`;
+  };
+
+  const getAvailableMonths = () => {
+    const year = filterForm.year;
+    return availableFilters.available_months?.[year] || [];
+  };
+
+  const getAvailableDays = () => {
+    const year = filterForm.year;
+    const month = filterForm.month;
+    const key = `${year}-${month.toString().padStart(2, '0')}`;
+    return availableFilters.available_days?.[key] || [];
   };
 
   // Landing Page
@@ -666,14 +700,37 @@ const BudgetTracker = () => {
           <h1 className="text-2xl font-bold text-white">Budget Tracker</h1>
           <div className="flex items-center space-x-4">
             <span className="text-gray-300">Welcome, {user?.first_name}</span>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setShowProfileSettings(true)}
-              className="text-white hover:bg-white/10"
-            >
-              <Settings className="w-4 h-4" />
-            </Button>
+            
+            {/* Settings Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-white hover:bg-white/10"
+                >
+                  <Settings className="w-4 h-4 mr-1" />
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-gray-900 border-gray-700">
+                <DropdownMenuItem 
+                  onClick={() => setShowEditProfile(true)}
+                  className="text-white hover:bg-gray-800 cursor-pointer"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setShowChangePassword(true)}
+                  className="text-white hover:bg-gray-800 cursor-pointer"
+                >
+                  <Lock className="w-4 h-4 mr-2" />
+                  Change Password
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
             <Button 
               variant="ghost" 
               size="sm"
@@ -693,9 +750,14 @@ const BudgetTracker = () => {
               <HomeIcon className="w-4 h-4 mr-2" />
               Dashboard
             </TabsTrigger>
-            <TabsTrigger value="all-entries" className="tab-trigger">
+            <TabsTrigger 
+              value="all-entries" 
+              className={`tab-trigger ${!hasTransactions ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={!hasTransactions}
+            >
               <List className="w-4 h-4 mr-2" />
               View All Entries
+              {!hasTransactions && <span className="text-xs ml-1">(No entries)</span>}
             </TabsTrigger>
           </TabsList>
 
@@ -858,7 +920,7 @@ const BudgetTracker = () => {
                 </Button>
               </div>
 
-              {/* Filters */}
+              {/* Smart Filters */}
               <Card className="dashboard-card">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center">
@@ -887,15 +949,19 @@ const BudgetTracker = () => {
 
                     <div>
                       <Label htmlFor="year" className="text-white">Year</Label>
-                      <Input
-                        id="year"
-                        type="number"
-                        min="2020"
-                        max="2030"
-                        value={filterForm.year}
-                        onChange={(e) => setFilterForm(prev => ({ ...prev, year: parseInt(e.target.value) }))}
-                        className="auth-input"
-                      />
+                      <Select 
+                        value={filterForm.year.toString()} 
+                        onValueChange={(value) => setFilterForm(prev => ({ ...prev, year: parseInt(value) }))}
+                      >
+                        <SelectTrigger className="auth-input">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(availableFilters.available_years || []).map(year => (
+                            <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>
@@ -908,9 +974,9 @@ const BudgetTracker = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {Array.from({ length: 12 }, (_, i) => (
-                            <SelectItem key={i + 1} value={(i + 1).toString()}>
-                              {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                          {getAvailableMonths().map(month => (
+                            <SelectItem key={month} value={month.toString()}>
+                              {new Date(0, month - 1).toLocaleString('default', { month: 'long' })}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -940,15 +1006,19 @@ const BudgetTracker = () => {
                     {filterForm.filter_type === 'day' && (
                       <div>
                         <Label htmlFor="day" className="text-white">Day</Label>
-                        <Input
-                          id="day"
-                          type="number"
-                          min="1"
-                          max="31"
-                          value={filterForm.day}
-                          onChange={(e) => setFilterForm(prev => ({ ...prev, day: parseInt(e.target.value) }))}
-                          className="auth-input"
-                        />
+                        <Select 
+                          value={filterForm.day.toString()} 
+                          onValueChange={(value) => setFilterForm(prev => ({ ...prev, day: parseInt(value) }))}
+                        >
+                          <SelectTrigger className="auth-input">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getAvailableDays().map(day => (
+                              <SelectItem key={day} value={day.toString()}>{day}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     )}
 
@@ -976,7 +1046,7 @@ const BudgetTracker = () => {
                 <CardContent>
                   {filteredTransactions.length === 0 ? (
                     <div className="text-center py-12">
-                      <div className="text-gray-400 mb-4">No transactions found</div>
+                      <div className="text-gray-400 mb-4">No transactions found for selected filter</div>
                       <Button 
                         onClick={fetchFilteredTransactions}
                         variant="outline"
@@ -1005,7 +1075,7 @@ const BudgetTracker = () => {
                                   {formatCurrency(transaction.amount)}
                                 </div>
                                 <div className="text-gray-400 text-sm">
-                                  {transaction.description || category?.name || 'No description'}
+                                  {transaction.description || transaction.category_name || 'No description'}
                                 </div>
                                 <div className="text-gray-500 text-xs">
                                   {new Date(transaction.date).toLocaleDateString()} • {transaction.payment_mode}
@@ -1217,232 +1287,227 @@ const BudgetTracker = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Profile Settings Modal */}
-      <Dialog open={showProfileSettings} onOpenChange={setShowProfileSettings}>
-        <DialogContent className="modal-content max-w-4xl">
+      {/* Edit Profile Modal */}
+      <Dialog open={showEditProfile} onOpenChange={setShowEditProfile}>
+        <DialogContent className="modal-content max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-white">Profile Settings</DialogTitle>
+            <DialogTitle className="text-white">Edit Profile</DialogTitle>
             <DialogDescription className="text-gray-400">
-              Update your profile information and change password
+              Update your profile information
             </DialogDescription>
           </DialogHeader>
+          
+          <form onSubmit={handleProfileUpdate} className="space-y-4">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="settings_first_name" className="text-white">First Name *</Label>
+                <Input
+                  id="settings_first_name"
+                  value={profileSettingsForm.first_name}
+                  onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, first_name: e.target.value }))}
+                  className="auth-input"
+                  required
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="settings_last_name" className="text-white">Last Name *</Label>
+                <Input
+                  id="settings_last_name"
+                  value={profileSettingsForm.last_name}
+                  onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, last_name: e.target.value }))}
+                  className="auth-input"
+                  required
+                />
+              </div>
+            </div>
 
-          <Tabs defaultValue="profile" className="space-y-6">
-            <TabsList className="glass-tabs">
-              <TabsTrigger value="profile" className="tab-trigger">
-                <User className="w-4 h-4 mr-2" />
-                Edit Profile
-              </TabsTrigger>
-              <TabsTrigger value="password" className="tab-trigger">
-                <Settings className="w-4 h-4 mr-2" />
-                Change Password
-              </TabsTrigger>
-            </TabsList>
+            <div>
+              <Label htmlFor="settings_email" className="text-white">Email *</Label>
+              <Input
+                id="settings_email"
+                type="email"
+                value={profileSettingsForm.email}
+                onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, email: e.target.value }))}
+                className="auth-input"
+                required
+              />
+            </div>
 
-            <TabsContent value="profile">
-              <form onSubmit={handleProfileUpdate} className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="settings_first_name" className="text-white">First Name *</Label>
-                    <Input
-                      id="settings_first_name"
-                      value={profileSettingsForm.first_name}
-                      onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, first_name: e.target.value }))}
-                      className="auth-input"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="settings_last_name" className="text-white">Last Name *</Label>
-                    <Input
-                      id="settings_last_name"
-                      value={profileSettingsForm.last_name}
-                      onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, last_name: e.target.value }))}
-                      className="auth-input"
-                      required
-                    />
-                  </div>
-                </div>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="settings_country" className="text-white">Country *</Label>
+                <Input
+                  id="settings_country"
+                  value={profileSettingsForm.country}
+                  onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, country: e.target.value }))}
+                  className="auth-input"
+                  required
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="settings_currency" className="text-white">Currency</Label>
+                <Select 
+                  value={profileSettingsForm.currency} 
+                  onValueChange={(value) => setProfileSettingsForm(prev => ({ ...prev, currency: value }))}
+                >
+                  <SelectTrigger className="auth-input">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INR">INR</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="GBP">GBP</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-                <div>
-                  <Label htmlFor="settings_email" className="text-white">Email *</Label>
-                  <Input
-                    id="settings_email"
-                    type="email"
-                    value={profileSettingsForm.email}
-                    onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, email: e.target.value }))}
-                    className="auth-input"
-                    required
-                  />
-                </div>
+            <div>
+              <Label htmlFor="settings_bank_account" className="text-white">Bank Account</Label>
+              <Input
+                id="settings_bank_account"
+                value={profileSettingsForm.bank_account}
+                onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, bank_account: e.target.value }))}
+                className="auth-input"
+              />
+            </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="settings_country" className="text-white">Country *</Label>
-                    <Input
-                      id="settings_country"
-                      value={profileSettingsForm.country}
-                      onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, country: e.target.value }))}
-                      className="auth-input"
-                      required
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="settings_currency" className="text-white">Currency</Label>
-                    <Select 
-                      value={profileSettingsForm.currency} 
-                      onValueChange={(value) => setProfileSettingsForm(prev => ({ ...prev, currency: value }))}
-                    >
-                      <SelectTrigger className="auth-input">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="INR">INR</SelectItem>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="GBP">GBP</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+            <div>
+              <Label htmlFor="settings_address" className="text-white">Address</Label>
+              <Input
+                id="settings_address"
+                value={profileSettingsForm.address}
+                onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, address: e.target.value }))}
+                className="auth-input"
+              />
+            </div>
 
-                <div>
-                  <Label htmlFor="settings_bank_account" className="text-white">Bank Account</Label>
-                  <Input
-                    id="settings_bank_account"
-                    value={profileSettingsForm.bank_account}
-                    onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, bank_account: e.target.value }))}
-                    className="auth-input"
-                  />
-                </div>
+            <div>
+              <Label htmlFor="settings_monthly_income" className="text-white">Monthly Income ({profileSettingsForm.currency})</Label>
+              <Input
+                id="settings_monthly_income"
+                type="number"
+                value={profileSettingsForm.monthly_income}
+                onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, monthly_income: e.target.value }))}
+                className="auth-input"
+                placeholder="For CFR calculations"
+              />
+            </div>
 
-                <div>
-                  <Label htmlFor="settings_address" className="text-white">Address</Label>
-                  <Input
-                    id="settings_address"
-                    value={profileSettingsForm.address}
-                    onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, address: e.target.value }))}
-                    className="auth-input"
-                  />
-                </div>
+            <div>
+              <Label htmlFor="settings_account_type" className="text-white">Account Type</Label>
+              <Select 
+                value={profileSettingsForm.account_type} 
+                onValueChange={(value) => setProfileSettingsForm(prev => ({ ...prev, account_type: value }))}
+              >
+                <SelectTrigger className="auth-input">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="individual">Individual</SelectItem>
+                  <SelectItem value="family">Family</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                <div>
-                  <Label htmlFor="settings_monthly_income" className="text-white">Monthly Income ({profileSettingsForm.currency})</Label>
-                  <Input
-                    id="settings_monthly_income"
-                    type="number"
-                    value={profileSettingsForm.monthly_income}
-                    onChange={(e) => setProfileSettingsForm(prev => ({ ...prev, monthly_income: e.target.value }))}
-                    className="auth-input"
-                    placeholder="For CFR calculations"
-                  />
-                </div>
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowEditProfile(false)}
+                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {loading ? 'Saving...' : 'Save Profile'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-                <div>
-                  <Label htmlFor="settings_account_type" className="text-white">Account Type</Label>
-                  <Select 
-                    value={profileSettingsForm.account_type} 
-                    onValueChange={(value) => setProfileSettingsForm(prev => ({ ...prev, account_type: value }))}
-                  >
-                    <SelectTrigger className="auth-input">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="individual">Individual</SelectItem>
-                      <SelectItem value="family">Family</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+      {/* Change Password Modal */}
+      <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
+        <DialogContent className="modal-content max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Change Password</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              Update your account password
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <div>
+              <Label htmlFor="current_password" className="text-white">Current Password</Label>
+              <Input
+                id="current_password"
+                type="password"
+                value={passwordForm.current_password}
+                onChange={(e) => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
+                className="auth-input"
+                required
+              />
+            </div>
 
-                <div className="flex justify-end space-x-3 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setShowProfileSettings(false)}
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={loading}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {loading ? 'Saving...' : 'Save Profile'}
-                  </Button>
-                </div>
-              </form>
-            </TabsContent>
+            <div>
+              <Label htmlFor="new_password" className="text-white">New Password</Label>
+              <Input
+                id="new_password"
+                type="password"
+                value={passwordForm.new_password}
+                onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
+                className="auth-input"
+                required
+              />
+            </div>
 
-            <TabsContent value="password">
-              <form onSubmit={handlePasswordChange} className="space-y-4">
-                <div>
-                  <Label htmlFor="current_password" className="text-white">Current Password</Label>
-                  <Input
-                    id="current_password"
-                    type="password"
-                    value={passwordForm.current_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, current_password: e.target.value }))}
-                    className="auth-input"
-                    required
-                  />
-                </div>
+            <div>
+              <Label htmlFor="confirm_password" className="text-white">Confirm New Password</Label>
+              <Input
+                id="confirm_password"
+                type="password"
+                value={passwordForm.confirm_password}
+                onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
+                className="auth-input"
+                required
+              />
+            </div>
 
-                <div>
-                  <Label htmlFor="new_password" className="text-white">New Password</Label>
-                  <Input
-                    id="new_password"
-                    type="password"
-                    value={passwordForm.new_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, new_password: e.target.value }))}
-                    className="auth-input"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="confirm_password" className="text-white">Confirm New Password</Label>
-                  <Input
-                    id="confirm_password"
-                    type="password"
-                    value={passwordForm.confirm_password}
-                    onChange={(e) => setPasswordForm(prev => ({ ...prev, confirm_password: e.target.value }))}
-                    className="auth-input"
-                    required
-                  />
-                </div>
-
-                <div className="flex justify-end space-x-3 pt-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => {
-                      setPasswordForm({
-                        current_password: '',
-                        new_password: '',
-                        confirm_password: ''
-                      });
-                      setShowProfileSettings(false);
-                    }}
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={loading}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {loading ? 'Changing...' : 'Change Password'}
-                  </Button>
-                </div>
-              </form>
-            </TabsContent>
-          </Tabs>
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => {
+                  setPasswordForm({
+                    current_password: '',
+                    new_password: '',
+                    confirm_password: ''
+                  });
+                  setShowChangePassword(false);
+                }}
+                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {loading ? 'Changing...' : 'Change Password'}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

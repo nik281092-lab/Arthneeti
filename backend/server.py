@@ -456,6 +456,58 @@ async def get_my_transactions(current_user: User = Depends(get_current_user)):
     transactions = await db.transactions.find({"profile_id": profile["id"]}).to_list(length=None)
     return [Transaction(**transaction) for transaction in transactions]
 
+@api_router.get("/transactions/available-filters")
+async def get_available_filters(current_user: User = Depends(get_current_user)):
+    """Get available years, months, and days that have transactions"""
+    profile = await db.profiles.find_one({"user_id": current_user.id})
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+    
+    # Get all transactions for the user
+    transactions = await db.transactions.find({"profile_id": profile["id"]}).to_list(length=None)
+    
+    available_years = set()
+    available_months = {}  # year -> [months]
+    available_days = {}    # year-month -> [days]
+    
+    for transaction in transactions:
+        try:
+            # Handle date parsing safely
+            date_str = transaction["date"].split('T')[0] if 'T' in transaction["date"] else transaction["date"]
+            transaction_date = datetime.fromisoformat(date_str)
+            
+            year = transaction_date.year
+            month = transaction_date.month
+            day = transaction_date.day
+            
+            available_years.add(year)
+            
+            if year not in available_months:
+                available_months[year] = set()
+            available_months[year].add(month)
+            
+            year_month_key = f"{year}-{month:02d}"
+            if year_month_key not in available_days:
+                available_days[year_month_key] = set()
+            available_days[year_month_key].add(day)
+            
+        except (ValueError, AttributeError):
+            continue
+    
+    # Convert sets to sorted lists
+    for year in available_months:
+        available_months[year] = sorted(list(available_months[year]))
+    
+    for key in available_days:
+        available_days[key] = sorted(list(available_days[key]))
+    
+    return {
+        "available_years": sorted(list(available_years)),
+        "available_months": available_months,
+        "available_days": available_days,
+        "has_transactions": len(transactions) > 0
+    }
+
 @api_router.get("/transactions/filtered")
 async def get_filtered_transactions(
     filter_type: FilterType,
@@ -481,8 +533,11 @@ async def get_filtered_transactions(
     
     for transaction in all_transactions:
         try:
-            # Handle date parsing safely
-            transaction_date = datetime.fromisoformat(transaction["date"].split('T')[0])
+            # Handle date parsing safely - support both ISO format and date-only format
+            date_str = transaction["date"]
+            if 'T' in date_str:
+                date_str = date_str.split('T')[0]
+            transaction_date = datetime.fromisoformat(date_str)
         except (ValueError, AttributeError):
             # Skip invalid dates
             continue
@@ -496,6 +551,8 @@ async def get_filtered_transactions(
                 continue
         elif filter_type == FilterType.WEEK and week and month:
             # Calculate week of month
+            if transaction_date.month != month:
+                continue
             first_day = datetime(year, month, 1)
             days_offset = (transaction_date - first_day).days
             week_of_month = (days_offset // 7) + 1
@@ -603,13 +660,28 @@ async def get_dashboard_summary(current_user: User = Depends(get_current_user), 
     transactions = await db.transactions.find({"profile_id": profile["id"]}).to_list(length=None)
     
     # Filter transactions for the current month
-    month_transactions = [t for t in transactions if t["date"].startswith(month)]
+    month_transactions = []
+    for t in transactions:
+        try:
+            # Handle both ISO datetime and date-only formats
+            date_str = t["date"]
+            if 'T' in date_str:
+                date_str = date_str.split('T')[0]
+            if date_str.startswith(month):
+                month_transactions.append(t)
+        except (ValueError, AttributeError):
+            continue
     
     total_income = sum(t["amount"] for t in month_transactions if t["transaction_type"] == TransactionType.INCOME)
     total_expenses = sum(t["amount"] for t in month_transactions if t["transaction_type"] == TransactionType.EXPENSE)
     
     # Calculate CFR analysis based on income percentages
-    monthly_income = profile.get("monthly_income", total_income)
+    monthly_income = profile.get("monthly_income") or total_income or 10000  # Default fallback
+    
+    # Ensure monthly_income is not None or 0
+    if not monthly_income or monthly_income <= 0:
+        monthly_income = 10000  # Default value
+    
     cfr_budgets = {
         CategoryType.NEEDS: monthly_income * 0.5,    # 50%
         CategoryType.WANTS: monthly_income * 0.3,    # 30%
