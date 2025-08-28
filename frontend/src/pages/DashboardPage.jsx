@@ -54,12 +54,26 @@ const DashboardPage = () => {
   const [editingTransaction, setEditingTransaction] = useState(null);
 
   useEffect(() => {
+    fetchCurrentUser();
     fetchCategories();
     fetchDashboardData();
     fetchAllTransactions();
     fetchAvailableFilters();
     fetchFamilyMembers();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await axios.get(`${API}/me`);
+      setCurrentUser(response.data);
+      
+      // Set default person name to current user
+      const defaultPersonName = `${response.data.first_name} ${response.data.last_name}`;
+      setTransactionForm(prev => ({ ...prev, person_name: defaultPersonName }));
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+    }
+  };
 
   const fetchCategories = async () => {
     try {
