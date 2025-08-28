@@ -624,14 +624,37 @@ const ProfilePage = () => {
           )}
 
           {/* Save Profile Button */}
-          <div className="flex justify-end">
+          <div className="flex justify-between items-center">
+            <div className="flex space-x-4">
+              {/* Create Family Accounts Button - Only show if there are new members */}
+              {familyStatus?.can_add_family_members && newFamilyMembers.length > 0 && (
+                <Button 
+                  type="button"
+                  onClick={handleCreateFamilyAccounts}
+                  disabled={loading || newFamilyMembers.length === 0}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3"
+                >
+                  <Users className="w-5 h-5 mr-2" />
+                  {loading ? 'Creating Accounts...' : `Create ${newFamilyMembers.length} Family Account(s)`}
+                </Button>
+              )}
+              
+              {/* Greyed out message when no new members */}
+              {familyStatus?.can_add_family_members && newFamilyMembers.length === 0 && (
+                <div className="px-6 py-3 bg-gray-600 text-gray-300 rounded-md flex items-center">
+                  <Users className="w-5 h-5 mr-2" />
+                  No new family members to create accounts for
+                </div>
+              )}
+            </div>
+
             <Button 
               type="submit" 
               disabled={loading}
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 text-lg"
             >
               <Save className="w-5 h-5 mr-2" />
-              {loading ? 'Saving...' : 'Save Profile & Create Family Accounts'}
+              {loading ? 'Saving...' : 'Save Profile Changes'}
             </Button>
           </div>
         </form>
