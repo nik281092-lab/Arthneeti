@@ -788,14 +788,14 @@ async def update_transaction(
     transaction_data: TransactionUpdate, 
     current_user: User = Depends(get_current_user)
 ):
-    # Check if transaction exists and belongs to user
-    profile = await db.profiles.find_one({"user_id": current_user.id})
-    if not profile:
+    # Check if transaction exists and belongs to user's family
+    master_profile = await get_master_profile(current_user)
+    if not master_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     
     existing_transaction = await db.transactions.find_one({
         "id": transaction_id,
-        "profile_id": profile["id"]
+        "profile_id": master_profile.id
     })
     
     if not existing_transaction:
@@ -815,14 +815,14 @@ async def update_transaction(
 
 @api_router.delete("/transactions/{transaction_id}")
 async def delete_transaction(transaction_id: str, current_user: User = Depends(get_current_user)):
-    # Check if transaction exists and belongs to user
-    profile = await db.profiles.find_one({"user_id": current_user.id})
-    if not profile:
+    # Check if transaction exists and belongs to user's family
+    master_profile = await get_master_profile(current_user)
+    if not master_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
     
     result = await db.transactions.delete_one({
         "id": transaction_id,
-        "profile_id": profile["id"]
+        "profile_id": master_profile.id
     })
     
     if result.deleted_count == 0:
